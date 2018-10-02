@@ -73,7 +73,8 @@ python -m trainer.task --train-files $TRAIN_FILE \
                        --validation-files $VALIDATION_FILE \
                        --job-dir $JOB_DIR \
                        --train-steps $TRAIN_STEPS \
-                       --learning-rate $LEARNING_RATE
+                       --learning-rate $LEARNING_RATE \
+                       --num-epochs 100
 ```
 
 ## Training using gcloud local
@@ -160,5 +161,5 @@ gcloud ml-engine predict --model keras_model --version v1 --json-instances sampl
 ## Visualize training with TensorBoard
 
 ```{bash}
-tensorboard --logdir=path/to/log-directory
+tensorboard --logdir=path/to/log-directory --host=127.0.0.1
 ```

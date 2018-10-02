@@ -3,7 +3,8 @@ from setuptools import setup
 
 REQUIRED_PACKAGES = ['Keras==2.2.2',
                      'h5py==2.7.0',
-                     'tensorflow==1.10.0']
+                     'tensorflow==1.10.0',
+                     'lifelines==0.15.0']
 
 setup(
     name='trainer',

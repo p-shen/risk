@@ -10,6 +10,8 @@ from keras import models, layers
 from keras.utils import np_utils
 from keras.backend import relu, softmax
 
+import numpy as np
+from lifelines.utils import concordance_index
 
 #Python2/3 compatibility imports
 from six.moves.urllib import parse as urlparse
@@ -19,37 +21,12 @@ from tensorflow.python.saved_model import builder as saved_model_builder
 from tensorflow.python.saved_model import tag_constants, signature_constants
 from tensorflow.python.saved_model.signature_def_utils_impl import predict_signature_def
 
-
-def model_fn(input_dim,
-             labels_dim,
-             loss_fn,
-             hidden_units=[100, 70, 50, 20],
-             learning_rate=0.001):
-
-  # TODO support parameters to build the network
-  model = models.Sequential()
-  model.add(layers.Dense(32, input_dim=input_dim))
-  model.add(layers.Dense(32, activation='relu'))
-  model.add(layers.Dropout(0.25))
-  model.add(layers.Dense(32, activation='relu'))
-  model.add(layers.Dense(labels_dim, activation='linear'))
-  
-  compile_model(model, learning_rate, loss_fn)
-  return model
-
-def negative_log_partial_likelihood_loss(regularization):
-    #Wrapper function for the negative logg partial likelihood loss function
-    
-    def loss(y_true, risk):
-        return negative_log_partial_likelihood(y_true, risk, regularization)
-    return loss
-
-def negative_log_partial_likelihood(censor, risk, regularization):
+def negative_log_partial_likelihood(censor, risk):
     """Return the negative log-partial likelihood of the prediction
     y_true contains the survival time
     risk is the risk output from the neural network
     censor is the vector of inputs that are censored
-    regularization is the regularization constant (not used currently)
+    regularization is the regularization constant (not used currently in model)
     
     Uses the Keras backend to perform calculations
     
@@ -65,10 +42,34 @@ def negative_log_partial_likelihood(censor, risk, regularization):
     neg_likelihood = - K.sum(censored_likelihood) / tf.cast(num_observed_events, tf.float32)
     return neg_likelihood
 
+def concordance_metric(survival_time, predicted_risk, censor):
+    # calculate the concordance index
+    partial_hazard = np.exp(-predicted_risk)
+    print(partial_hazard)
+    ci = concordance_index(survival_time, partial_hazard, censor)
+    return ci
+
+def model_fn(input_dim,
+             labels_dim,
+             loss_fn,
+             hidden_units=[100, 70, 50, 20],
+             learning_rate=0.001):
+
+  # TODO support parameters to build the network
+  model = models.Sequential()
+  model.add(layers.Dense(128, input_dim=input_dim))
+  model.add(layers.Dense(64, activation='relu'))
+  model.add(layers.Dropout(0.25))
+  model.add(layers.Dense(64, activation='relu'))
+  model.add(layers.Dense(labels_dim, activation='linear'))
+  
+  compile_model(model, learning_rate, loss_fn)
+  return model
+
 def compile_model(model, learning_rate, loss_fn):
   model.compile(loss=loss_fn,
                 optimizer=keras.optimizers.Adam(lr=learning_rate),
-                metrics=['accuracy'], )
+                metrics=['accuracy'])
   return model
 
 def to_savedmodel(model, export_path):

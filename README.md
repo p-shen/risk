@@ -8,11 +8,11 @@ for training is hosted by Stanford.
 To host the file on Google Cloud Storage:
 
 ```{bash}
-TRAIN_FILE=adult.data.csv
-EVAL_FILE=adult.test.csv
+TRAIN_FILE=train.csv
+EVAL_FILE=eval.csv
 
-GCS_TRAIN_FILE=gs://cloud-samples-data/ml-engine/census/data/adult.data.csv
-GCS_EVAL_FILE=gs://cloud-samples-data/ml-engine/census/data/adult.test.csv
+GCS_TRAIN_FILE=gs://gs_bucket/train.csv
+GCS_EVAL_FILE=gs://gs_bucket/eval.csv
 
 gsutil cp $GCS_TRAIN_FILE $TRAIN_FILE
 gsutil cp $GCS_EVAL_FILE $EVAL_FILE
@@ -25,6 +25,16 @@ Training file with dimensions $N$ samples by $p*genes+survival+censor$ features:
 * [N, 0:p] Expression matrix
 * [N, p+1] Survival information
 * [N, p+2] Censor information
+
+### Preprocessing Files
+
+Selects features from TCGA expression from a features file, and creates training and evaluation files.
+
+```{bash}
+python preprocess.py --expression-file "experiment/data/tcga_sample/expression.tsv" --survival-file "experiment/data/tcga_sample/survival.tsv" --features-file "experiment/data/genes.tide.txt"
+```
+
+The files should be in a `.tsv` format (tab seperated values).
 
 ## Virtual environment
 
@@ -48,15 +58,22 @@ There are two options for the virtual environments:
 
 ## Using local python
 
-You can run the Keras code locally
+You can run the Keras code locally.
 
+A sample local run can be run as:
 ```{bash}
-JOB_DIR=census_keras
-TRAIN_STEPS=2000
+JOB_DIR=surv_keras
+TRAIN_STEPS=20
+TRAIN_FILE=train.tsv
+EVAL_FILE=eval.tsv
+VALIDATION_FILE=valid.tsv
+LEARNING_RATE=0.001
 python -m trainer.task --train-files $TRAIN_FILE \
                        --eval-files $EVAL_FILE \
+                       --validation-files $VALIDATION_FILE \
                        --job-dir $JOB_DIR \
-                       --train-steps $TRAIN_STEPS
+                       --train-steps $TRAIN_STEPS \
+                       --learning-rate $LEARNING_RATE
 ```
 
 ## Training using gcloud local
@@ -64,7 +81,7 @@ python -m trainer.task --train-files $TRAIN_FILE \
 You can run Keras training using gcloud locally
 
 ```{bash}
-JOB_DIR=census_keras
+JOB_DIR=surv_keras
 TRAIN_STEPS=200
 gcloud ml-engine local train --package-path trainer \
                              --module-name trainer.task \
@@ -138,4 +155,10 @@ Run the online prediction
 
 ```{bash}
 gcloud ml-engine predict --model keras_model --version v1 --json-instances sample.json
+```
+
+## Visualize training with TensorBoard
+
+```{bash}
+tensorboard --logdir=path/to/log-directory
 ```

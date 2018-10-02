@@ -1,7 +1,7 @@
 # Copyright 2017 Peter Shen. All Rights Reserved.
 # MIT License
 
-"""This code implements a Feed forward neural network using Keras API."""
+"""Orchestrates training and evaluation of a neural network"""
 
 import argparse
 import glob
@@ -15,13 +15,9 @@ from tensorflow.python.lib.io import file_io
 import trainer.generator as gn
 import trainer.model as model
 
-# batch size per epoch
-BATCH_SIZE = 64
-
 FILE_PATH = 'checkpoint.{epoch:02d}.hdf5'
 SURV_MODEL = 'surv.hdf5'
 
-INPUT_SIZE = 100
 CLASS_SIZE = 1
 
 class ContinuousEval(Callback):
@@ -31,12 +27,14 @@ class ContinuousEval(Callback):
 
   def __init__(self,
                loss_fn,
+               eval_batch_size,
                eval_frequency,
                eval_files,
                learning_rate,
                job_dir,
                steps=1000):
     self.loss_fn = loss_fn
+    self.eval_batch_size = eval_batch_size
     self.eval_files = eval_files
     self.eval_frequency = eval_frequency
     self.learning_rate = learning_rate
@@ -54,19 +52,29 @@ class ContinuousEval(Callback):
       checkpoints = glob.glob(model_path_glob)
       if len(checkpoints) > 0:
         checkpoints.sort()
-        surv_model = load_model(checkpoints[-1])
+        surv_model = load_model(checkpoints[-1], custom_objects={'negative_log_partial_likelihood': model.negative_log_partial_likelihood})
         surv_model = model.compile_model(surv_model, self.learning_rate, self.loss_fn)
+        eval_steps, input_size, eval_generator = gn.generator_input(self.eval_files, shuffle=False, batch_size=self.eval_batch_size)
         loss, acc = surv_model.evaluate_generator(
-            gn.generator_input(self.eval_files, shuffle=True, batch_size=BATCH_SIZE),
-            steps=self.steps)
-        print('\nEvaluation epoch[{}] metrics[{:.2f}, {:.2f}] {}'.format(
-            epoch, loss, acc, surv_model.metrics_names))
+            eval_generator,
+            steps=eval_steps)
+        
+        # calculate concordance index
+        features, labels = gn.processDataLabels(self.eval_files)
+        features = features.values
+        labels = labels.values
+        hazard_predict = surv_model.predict(features)
+        ci = model.concordance_metric(labels[:,0], hazard_predict, labels[:,1])
+        
+        print('\nEvaluation epoch[{}] metrics[Loss:{:.2f}, Concordance Index:{:.2f}]'.format(
+            epoch, loss, ci))
         if self.job_dir.startswith("gs://"):
           copy_file_to_gcs(self.job_dir, checkpoints[-1])
       else:
         print('\nEvaluation epoch[{}] (no checkpoints found)'.format(epoch))
 
 def dispatch(train_files,
+             validation_files,
              eval_files,
              job_dir,
              train_steps,
@@ -80,9 +88,6 @@ def dispatch(train_files,
              eval_num_epochs,
              num_epochs,
              checkpoint_epochs):
-
-  loss_fn = model.negative_log_partial_likelihood_loss(0)
-  surv_model = model.model_fn(INPUT_SIZE, CLASS_SIZE, loss_fn)
 
   try:
     os.makedirs(job_dir)
@@ -104,7 +109,8 @@ def dispatch(train_files,
       mode='max')
 
   # Continuous eval callback
-  evaluation = ContinuousEval(loss_fn,
+  evaluation = ContinuousEval(model.negative_log_partial_likelihood,
+                              eval_batch_size,
                               eval_frequency,
                               eval_files,
                               learning_rate,
@@ -117,16 +123,19 @@ def dispatch(train_files,
       write_graph=True,
       embeddings_freq=0)
 
-  callbacks=[checkpoint, evaluation, tblog]
+  cb=[checkpoint, evaluation, tblog]
 
-  # TODO create generator here
-  generator = gn.generator_input(train_files, shuffle=True, batch_size=BATCH_SIZE)
+  train_steps, input_size, generator = gn.generator_input(train_files, shuffle=True, batch_size=train_batch_size)
+  valid_steps, input_size, val_generator = gn.generator_input(validation_files, shuffle=True, batch_size=train_batch_size)
+  surv_model = model.model_fn(input_size, CLASS_SIZE, model.negative_log_partial_likelihood)
 
   surv_model.fit_generator(
       generator,
       steps_per_epoch=train_steps,
       epochs=num_epochs,
-      callbacks=callbacks)
+      validation_data=val_generator,
+      validation_steps=valid_steps,
+      callbacks=cb)
 
   # Unhappy hack to work around h5py not being able to write to GCS.
   # Force snapshots and saves to local filesystem, then copy them over to GCS.
@@ -150,11 +159,15 @@ if __name__ == "__main__":
   parser.add_argument('--train-files',
                       required=True,
                       type=str,
-                      help='Training files local or GCS', nargs='+')
+                      help='Training files local or GCS as a tab seperated file (.tsv)')
+  parser.add_argument('--validation-files',
+                      required=True,
+                      type=str,
+                      help='Validation files local or GCS as a tab seperated file (.tsv)')
   parser.add_argument('--eval-files',
                       required=True,
                       type=str,
-                      help='Evaluation files local or GCS', nargs='+')
+                      help='Evaluation files local or GCS as a tab seperated file (.tsv)')
   parser.add_argument('--job-dir',
                       required=True,
                       type=str,
@@ -185,7 +198,7 @@ if __name__ == "__main__":
                       default=0.003,
                       help='Learning rate for SGD')
   parser.add_argument('--eval-frequency',
-                      default=10,
+                      default=5,
                       help='Perform one evaluation per n epochs')
   parser.add_argument('--first-layer-size',
                      type=int,

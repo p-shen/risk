@@ -13,10 +13,6 @@ from keras.backend import relu, softmax
 import numpy as np
 from lifelines.utils import concordance_index
 
-# Python2/3 compatibility imports
-from six.moves.urllib import parse as urlparse
-from builtins import range
-
 from tensorflow.python.saved_model import builder as saved_model_builder
 from tensorflow.python.saved_model import tag_constants, signature_constants
 from tensorflow.python.saved_model.signature_def_utils_impl import predict_signature_def

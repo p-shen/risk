@@ -9,6 +9,10 @@ import pandas as pd
 
 def normalize(data):
     # perform quantile normalization
+
+    # force data into floats for np calculations
+    data = pd.to_numeric(data)
+
     # https://stackoverflow.com/questions/37935920/quantile-normalization-on-pandas-dataframe
     data /= np.max(np.abs(data), axis=0)  # scale between [0,1]
     rank_mean = data.stack().groupby(

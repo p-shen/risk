@@ -11,7 +11,7 @@ def normalize(data):
     # perform quantile normalization
 
     # force data into floats for np calculations
-    data = pd.to_numeric(data)
+    data = data.astype('float64')
 
     # https://stackoverflow.com/questions/37935920/quantile-normalization-on-pandas-dataframe
     data /= np.max(np.abs(data), axis=0)  # scale between [0,1]
@@ -23,7 +23,7 @@ def normalize(data):
 
 def processDataLabels(input_file):
     # Read in file
-    data = pd.read_csv(input_file, sep="\t")
+    data = pd.read_csv(input_file, sep="\t", index_col=0)
 
     # split into data and features
     features = data.iloc[:, :-2]

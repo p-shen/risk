@@ -143,6 +143,8 @@ def dispatch(train_files,
 
     cb = [checkpoint, evaluation, early_stop, tblog]
 
+    print "Created checkpoints"
+
     train_steps, input_size, generator = gn.generator_input(
         train_files, shuffle=True, batch_size=train_batch_size)
     valid_steps, input_size, val_generator = gn.generator_input(
@@ -223,6 +225,7 @@ if __name__ == "__main__":
                         default=0.003,
                         help='Learning rate for SGD')
     parser.add_argument('--eval-frequency',
+                        type=int,
                         default=5,
                         help='Perform one evaluation per n epochs')
     parser.add_argument('--first-layer-size',

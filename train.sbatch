@@ -33,4 +33,5 @@ python -m trainer.task --train-files $TRAIN_FILE \
                        --eval-batch-size $EVAL_BATCH_SIZE \
                        --learning-rate $LEARNING_RATE \
                        --eval-frequency $EVAL_FREQUENCY \
+                       --early-stop 15 \
                        --num-epochs 5000

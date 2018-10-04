@@ -93,6 +93,7 @@ def dispatch(train_files,
              eval_batch_size,
              learning_rate,
              eval_frequency,
+             early_stop,
              first_layer_size,
              scale_factor,
              eval_num_epochs,
@@ -121,7 +122,7 @@ def dispatch(train_files,
     # Stop training early when the loss is not decreasing
     early_stop = EarlyStopping(monitor='loss',
                                min_delta=0,
-                               patience=5,
+                               patience=early_stop,
                                verbose=0,
                                mode='auto')
 
@@ -228,6 +229,10 @@ if __name__ == "__main__":
                         type=int,
                         default=5,
                         help='Perform one evaluation per n epochs')
+    parser.add_argument('--early-stop',
+                        type=int,
+                        default=5,
+                        help='Stop training after loss is not decreasing for n epochs')
     parser.add_argument('--first-layer-size',
                         type=int,
                         default=256,

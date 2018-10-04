@@ -23,7 +23,7 @@ def normalize(data):
 
 def processDataLabels(input_file):
     # Read in file
-    data = pd.read_csv(input_file, sep="\t", index_col=0)
+    data = pd.read_csv(input_file, sep="\t")
 
     # split into data and features
     features = data.iloc[:, :-2]

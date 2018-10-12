@@ -59,11 +59,22 @@
             "request": "launch",
             "program": "${workspaceFolder}/trainer/task.py",
             "args": [
-                "--job-dir", "surv_keras_debug",
-                "-train-steps","20",
-                "--train-files","train.tsv",
-                "--eval-files","eval.tsv",
-                "--num-epochs","4"
+                "--job-dir",
+                "models/debug/batch_by_type",
+                "-train-steps",
+                "30",
+                "--train-batch-size",
+                "10",
+                "--train-files",
+                "data/tcga/TrainingData.txt",
+                "--eval-files",
+                "data/tcga/EvalData.txt",
+                "--validation-files",
+                "data/tcga/TestData.txt",
+                "--num-epochs",
+                "100",
+                "--early-stop",
+                "50"
             ],
             "console": "integratedTerminal"
         }

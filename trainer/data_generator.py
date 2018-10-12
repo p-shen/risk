@@ -6,6 +6,8 @@
 import numpy as np
 import pandas as pd
 
+DEBUG = False
+
 
 def normalize(data):
     # perform quantile normalization
@@ -13,11 +15,15 @@ def normalize(data):
     # force data into floats for np calculations
     data = data.astype('float64')
 
+    # add a epsilon to the data to adjust for 0 values
+    data += 0.001
+
     # https://stackoverflow.com/questions/37935920/quantile-normalization-on-pandas-dataframe
     data /= np.max(np.abs(data), axis=0)  # scale between [0,1]
     rank_mean = data.stack().groupby(
-        data.rank(method='first').stack().astype(int)).mean()
-    data = data.rank(method='min').stack().astype(int).map(rank_mean).unstack()
+        data.rank(method='first').stack(dropna=False).astype(int)).mean()
+    data = data.rank(method='min').stack(dropna=False).astype(
+        int).map(rank_mean).unstack()
     return data
 
 
@@ -26,8 +32,11 @@ def processDataLabels(input_file):
     data = pd.read_csv(input_file, sep="\t")
 
     # split into data and features
-    features = data.iloc[:, :-2]
+    features = data.iloc[:, :-3]
+    cancertype = data.iloc[:, -3]
     labels = data.iloc[:, -2:]
+
+    cancertype = cancertype.astype('category')
 
     # quantile normalization
     features = normalize(features)
@@ -35,11 +44,12 @@ def processDataLabels(input_file):
     # process into a numpy array
     features = features.values
     labels = labels.values
-    return features, labels
+    return features, labels, cancertype
 
 
-def generator_input(input_file, shuffle=True, batch_size=64):
-    features, labels = processDataLabels(input_file)
+def generator_input(input_file, shuffle=True, batch_size=64, batch_by_type=True):
+    features, labels, cancertype = processDataLabels(input_file)
+    types = cancertype.dtype.categories
 
     num_batches_per_epoch = int((len(features) - 1) / batch_size) + 1
 
@@ -47,18 +57,36 @@ def generator_input(input_file, shuffle=True, batch_size=64):
 
     # Sorts the batches by survival time
     def data_generator():
-        data_size = len(features)
         while True:
-            # Sample from the dataset for each epoch
+            data_size = len(features)
             if shuffle:
                 shuffle_indices = np.random.permutation(np.arange(data_size))
                 shuffled_features = features[shuffle_indices]
                 shuffled_labels = labels[shuffle_indices]
+                shuffled_type = cancertype[shuffle_indices]
             else:
                 shuffled_features = features
                 shuffled_labels = labels
+                shuffled_type = cancertype
+
+            # Sample from the dataset for each epoch
+            if batch_by_type:
+                random_type = np.random.choice(types, 1)[0]
+                shuffled_features = features[shuffled_type == random_type]
+                shuffled_labels = labels[shuffled_type == random_type]
+                data_size = len(shuffled_features)
+                num_batches_per_epoch = int(
+                    (len(shuffled_labels) - 1) / batch_size) + 1
+
+                if DEBUG:
+                    print(random_type)
+                    print(len(shuffled_features))
+                    print(num_batches_per_epoch)
 
             for batch_num in range(num_batches_per_epoch):
+                if DEBUG:
+                    print("batch num {}".format(batch_num))
+
                 start_index = batch_num * batch_size
                 end_index = min((batch_num + 1) * batch_size, data_size)
                 X, y = shuffled_features[start_index:
@@ -89,7 +117,26 @@ def generate_data():
 
 
 if __name__ == '__main__':
+    DEBUG = True
+
     BATCH_SIZE = 20
-    train, label = generate_data()
-    # train_steps, train_batches = batch_iter(train, label, 20)
-    # print(next(train_batches))
+    shuffle = True
+
+    train_steps, input_size, generator = generator_input(
+        "data/tcga/test_clindata.txt", shuffle=shuffle, batch_size=BATCH_SIZE)
+
+    # testing generator
+    index = 0
+    for _ in generator:
+        print("index is {}".format(index))
+        index += 1
+        if index < 10:
+            pass
+        else:
+            break
+
+    # testing data processing
+    features, labels, cancertypes = processDataLabels(
+        "data/tcga/EvalData.txt")
+    print(features.shape)
+    print(labels.shape)

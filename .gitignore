@@ -1,1 +1,4 @@
-experiment/data/*
+experiment/data
+data
+models
+*.pyc

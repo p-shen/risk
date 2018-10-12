@@ -12,10 +12,10 @@ from keras.callbacks import Callback, ModelCheckpoint, TensorBoard, EarlyStoppin
 from keras.models import load_model
 from tensorflow.python.lib.io import file_io
 
-import trainer.generator as gn
+import trainer.data_generator as gn
 import trainer.model as model
 
-FILE_PATH = 'checkpoint.{epoch:02d}.hdf5'
+FILE_PATH = 'checkpoint.{epoch:04d}.hdf5'
 SURV_MODEL = 'surv.hdf5'
 
 CLASS_SIZE = 1
@@ -58,13 +58,14 @@ class ContinuousEval(Callback):
                 surv_model = model.compile_model(
                     surv_model, self.learning_rate, self.loss_fn)
                 eval_steps, input_size, eval_generator = gn.generator_input(
-                    self.eval_files, shuffle=False, batch_size=self.eval_batch_size)
+                    self.eval_files, shuffle=False, batch_size=self.eval_batch_size, batch_by_type=True)
                 loss, acc = surv_model.evaluate_generator(
                     eval_generator,
                     steps=eval_steps)
 
                 # calculate concordance index
-                features, labels = gn.processDataLabels(self.eval_files)
+                features, labels, cancertypes = gn.processDataLabels(
+                    self.eval_files)
                 hazard_predict = surv_model.predict(features)
                 ci = model.concordance_metric(
                     labels[:, 0], hazard_predict, labels[:, 1])
@@ -144,12 +145,12 @@ def dispatch(train_files,
 
     cb = [checkpoint, evaluation, early_stop, tblog]
 
-    print "Created checkpoints"
+    print("Created checkpoints")
 
-    train_steps, input_size, generator = gn.generator_input(
-        train_files, shuffle=True, batch_size=train_batch_size)
-    valid_steps, input_size, val_generator = gn.generator_input(
-        validation_files, shuffle=True, batch_size=train_batch_size)
+    train_steps_gen, input_size, generator = gn.generator_input(
+        train_files, shuffle=True, batch_size=train_batch_size, batch_by_type=True)
+    valid_steps_gen, input_size, val_generator = gn.generator_input(
+        validation_files, shuffle=True, batch_size=train_batch_size, batch_by_type=True)
     surv_model = model.model_fn(
         input_size, CLASS_SIZE, model.negative_log_partial_likelihood)
 
@@ -158,7 +159,7 @@ def dispatch(train_files,
         steps_per_epoch=train_steps,
         epochs=num_epochs,
         validation_data=val_generator,
-        validation_steps=valid_steps,
+        validation_steps=train_steps,
         verbose=1,  # for tensorboard visualization
         callbacks=cb)
 

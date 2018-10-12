@@ -61,20 +61,24 @@ There are two options for the virtual environments:
 You can run the Keras code locally.
 
 A sample local run can be run as:
+
 ```{bash}
-JOB_DIR=surv_keras
-TRAIN_STEPS=20
-TRAIN_FILE=train.tsv
-EVAL_FILE=eval.tsv
-VALIDATION_FILE=valid.tsv
-LEARNING_RATE=0.001
+JOB_DIR=models/batch_by_type
+TRAIN_STEPS=3
+BATCH_SIZE=128
+TRAIN_FILE=/Users/Peter/Documents/GitHub/risk/data/tcga/TrainingData.txt
+EVAL_FILE=/Users/Peter/Documents/GitHub/risk/data/tcga/EvalData.txt
+VALIDATION_FILE=/Users/Peter/Documents/GitHub/risk/data/tcga/TestData.txt
+LEARNING_RATE=0.003
 python -m trainer.task --train-files $TRAIN_FILE \
                        --eval-files $EVAL_FILE \
                        --validation-files $VALIDATION_FILE \
                        --job-dir $JOB_DIR \
                        --train-steps $TRAIN_STEPS \
                        --learning-rate $LEARNING_RATE \
-                       --num-epochs 100
+                       --num-epochs 300 \
+                       --early-stop 100 \
+                      --train-batch-size $BATCH_SIZE
 ```
 
 ## Training using gcloud local

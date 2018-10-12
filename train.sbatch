@@ -28,7 +28,7 @@ TRAIN_STEPS=3
 BATCH_SIZE=128
 TRAIN_FILE=/home/pzs2/capstone/data/TrainingData.txt
 EVAL_FILE=/home/pzs2/capstone/data/EvalData.txt
-VALIDATION_FILE=/home/pzs2/capstone/dataTestData.txt
+VALIDATION_FILE=/home/pzs2/capstone/data/TestData.txt
 LEARNING_RATE=0.003
 python -m trainer.task --train-files $TRAIN_FILE \
                        --eval-files $EVAL_FILE \

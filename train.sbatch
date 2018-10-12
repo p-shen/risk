@@ -14,24 +14,28 @@
 source /home/pzs2/keras/bin/activate
 
 
-JOB_DIR=/home/pzs2/capstone/models/tcga_linear_1
+# model = models.Sequential()
+# model.add(layers.Dense(256, input_dim=input_dim))
+# model.add(layers.Dense(256, activation='sigmoid'))
+# model.add(layers.Dense(128, activation='sigmoid'))
+# model.add(layers.Dense(128, activation='relu'))
+# model.add(layers.Dropout(0.25))
+# model.add(layers.Dense(labels_dim, activation='linear'))
 
-TRAIN_FILE=/n/groups/liu/peter/TCGA/TrainingData.txt
-EVAL_FILE=/n/groups/liu/peter/TCGA/RetestData.txt
-VALIDATION_FILE=/n/groups/liu/peter/TCGA/TestData.txt
+JOB_DIR=/home/pzs2/capstone/models/batch_by_type
 
+TRAIN_STEPS=3
+BATCH_SIZE=128
+TRAIN_FILE=/home/pzs2/capstone/data/TrainingData.txt
+EVAL_FILE=/home/pzs2/capstone/data/EvalData.txt
+VALIDATION_FILE=/home/pzs2/capstone/dataTestData.txt
 LEARNING_RATE=0.003
-TRAIN_BATCH_SIZE=500
-EVAL_BATCH_SIZE=500
-EVAL_FREQUENCY=10
-
 python -m trainer.task --train-files $TRAIN_FILE \
                        --eval-files $EVAL_FILE \
                        --validation-files $VALIDATION_FILE \
                        --job-dir $JOB_DIR \
-                       --train-batch-size $TRAIN_BATCH_SIZE \
-                       --eval-batch-size $EVAL_BATCH_SIZE \
+                       --train-steps $TRAIN_STEPS \
                        --learning-rate $LEARNING_RATE \
-                       --eval-frequency $EVAL_FREQUENCY \
-                       --early-stop 15 \
-                       --num-epochs 5000
+                       --num-epochs 500 \
+                       --early-stop 100 \
+                      --train-batch-size $BATCH_SIZE

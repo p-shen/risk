@@ -67,9 +67,10 @@ def model_fn(input_dim,
     # TODO support parameters to build the network
     model = models.Sequential()
     model.add(layers.Dense(256, input_dim=input_dim))
+    model.add(layers.Dense(256, activation='sigmoid'))
+    model.add(layers.Dense(128, activation='sigmoid'))
     model.add(layers.Dense(128, activation='relu'))
     model.add(layers.Dropout(0.25))
-    model.add(layers.Dense(128, activation='relu'))
     model.add(layers.Dense(labels_dim, activation='linear'))
 
     compile_model(model, learning_rate, loss_fn)

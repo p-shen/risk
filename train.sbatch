@@ -13,23 +13,14 @@
 # make dependencies
 source /home/pzs2/keras/bin/activate
 
-
-# model = models.Sequential()
-# model.add(layers.Dense(256, input_dim=input_dim))
-# model.add(layers.Dense(256, activation='sigmoid'))
-# model.add(layers.Dense(128, activation='sigmoid'))
-# model.add(layers.Dense(128, activation='relu'))
-# model.add(layers.Dropout(0.25))
-# model.add(layers.Dense(labels_dim, activation='linear'))
-
 JOB_DIR=/home/pzs2/capstone/models/batch_by_type
 
-TRAIN_STEPS=3
+TRAIN_STEPS=10
 BATCH_SIZE=128
-TRAIN_FILE=/home/pzs2/capstone/data/TrainingData.txt
-EVAL_FILE=/home/pzs2/capstone/data/EvalData.txt
-VALIDATION_FILE=/home/pzs2/capstone/data/TestData.txt
-LEARNING_RATE=0.003
+TRAIN_FILE=/home/pzs2/capstone/proj/TCGA/brca/TrainingData.txt
+EVAL_FILE=/home/pzs2/capstone/proj/TCGA/brca/EvalData.txt
+VALIDATION_FILE=/home/pzs2/capstone/proj/TCGA/brca/TestData.txt
+LEARNING_RATE=0.05
 python -m trainer.task --train-files $TRAIN_FILE \
                        --eval-files $EVAL_FILE \
                        --validation-files $VALIDATION_FILE \
@@ -38,4 +29,4 @@ python -m trainer.task --train-files $TRAIN_FILE \
                        --learning-rate $LEARNING_RATE \
                        --num-epochs 500 \
                        --early-stop 100 \
-                      --train-batch-size $BATCH_SIZE
+                       --train-batch-size $BATCH_SIZE

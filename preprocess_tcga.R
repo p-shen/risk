@@ -1,12 +1,12 @@
-# Process Single File
-
-data <- read.csv("Expr_ClinData_marker.txt", sep="\t")
 data <- data[!is.na(data[,960]),]
 data[,961] <- abs(data[,961]-1)
+
 # cancer types with more than 300 samples
 types_filter <- names(table(data[,959])[table(data[,959]) > 300])
 data <- data[data[,959] %in% types_filter,]
 
+data <- data[data[,959] == 'BRCA',]
+data[,959] <- NULL
 
 TrainingData=sample(1:nrow(data),replace = F,size = 0.8*nrow(data))
 tmp=setdiff(1:nrow(data),TrainingData)

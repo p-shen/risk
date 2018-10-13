@@ -27,16 +27,19 @@ def normalize(data):
     return data
 
 
-def processDataLabels(input_file):
+def processDataLabels(input_file, batch_by_type=False):
     # Read in file
     data = pd.read_csv(input_file, sep="\t")
 
     # split into data and features
-    features = data.iloc[:, :-3]
-    cancertype = data.iloc[:, -3]
-    labels = data.iloc[:, -2:]
+    if batch_by_type:
+        features = data.iloc[:, :-3]
+        cancertype = data.iloc[:, -3]
+        cancertype = cancertype.astype('category')
+    else:
+        features = data.iloc[:, :-2]
 
-    cancertype = cancertype.astype('category')
+    labels = data.iloc[:, -2:]
 
     # quantile normalization
     features = normalize(features)
@@ -44,12 +47,17 @@ def processDataLabels(input_file):
     # process into a numpy array
     features = features.values
     labels = labels.values
-    return features, labels, cancertype
+    if batch_by_type:
+        return features, labels, cancertype
+    else:
+        return features, labels, None
 
 
 def generator_input(input_file, shuffle=True, batch_size=64, batch_by_type=True):
-    features, labels, cancertype = processDataLabels(input_file)
-    types = cancertype.dtype.categories
+    features, labels, cancertype = processDataLabels(
+        input_file, batch_by_type=batch_by_type)
+    if (batch_by_type):
+        types = cancertype.dtype.categories
 
     num_batches_per_epoch = int((len(features) - 1) / batch_size) + 1
 
@@ -63,11 +71,16 @@ def generator_input(input_file, shuffle=True, batch_size=64, batch_by_type=True)
                 shuffle_indices = np.random.permutation(np.arange(data_size))
                 shuffled_features = features[shuffle_indices]
                 shuffled_labels = labels[shuffle_indices]
-                shuffled_type = cancertype[shuffle_indices]
+                if batch_by_type:
+                    shuffled_type = cancertype[shuffle_indices]
             else:
                 shuffled_features = features
                 shuffled_labels = labels
-                shuffled_type = cancertype
+                if batch_by_type:
+                    shuffled_type = cancertype
+
+            num_batches_per_epoch = int(
+                (len(shuffled_labels) - 1) / batch_size) + 1
 
             # Sample from the dataset for each epoch
             if batch_by_type:
@@ -123,7 +136,7 @@ if __name__ == '__main__':
     shuffle = True
 
     train_steps, input_size, generator = generator_input(
-        "data/tcga/test_clindata.txt", shuffle=shuffle, batch_size=BATCH_SIZE)
+        "data/tcga/EvalData.txt", shuffle=shuffle, batch_size=BATCH_SIZE, batch_by_type=False)
 
     # testing generator
     index = 0
@@ -137,6 +150,6 @@ if __name__ == '__main__':
 
     # testing data processing
     features, labels, cancertypes = processDataLabels(
-        "data/tcga/EvalData.txt")
+        "data/tcga/EvalData.txt", batch_by_type=False)
     print(features.shape)
     print(labels.shape)

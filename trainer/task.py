@@ -35,6 +35,8 @@ class ContinuousEval(Callback):
                  eval_files,
                  learning_rate,
                  job_dir,
+                 eval_features,
+                 eval_labels,
                  steps=1000):
         self.loss_fn = loss_fn
         self.eval_batch_size = eval_batch_size
@@ -43,6 +45,8 @@ class ContinuousEval(Callback):
         self.learning_rate = learning_rate
         self.job_dir = job_dir
         self.steps = steps
+        self.eval_features = eval_features
+        self.eval_labels = eval_labels
 
     def on_epoch_begin(self, epoch, logs={}):
         if epoch > 0 and epoch % self.eval_frequency == 0:
@@ -65,12 +69,9 @@ class ContinuousEval(Callback):
                     eval_generator,
                     steps=eval_steps)
 
-                # calculate concordance index
-                features, labels, cancertypes = gn.processDataLabels(
-                    self.eval_files, batch_by_type=BATCH_BY_TYPE)
-                hazard_predict = surv_model.predict(features)
+                hazard_predict = surv_model.predict(eval_features)
                 ci = model.concordance_metric(
-                    labels[:, 0], hazard_predict, labels[:, 1])
+                    eval_labels[:, 0], hazard_predict, eval_labels[:, 1])
 
                 print('\nEvaluation epoch[{}] metrics[Loss:{:.2f}, Concordance Index:{:.2f}]'.format(
                     epoch, loss, ci))
@@ -129,13 +130,19 @@ def dispatch(train_files,
                                verbose=0,
                                mode='auto')
 
+    # calculate concordance index
+    features, labels, cancertypes = gn.processDataLabels(
+        eval_files, batch_by_type=BATCH_BY_TYPE)
+
     # Continuous eval callback
     evaluation = ContinuousEval(model.negative_log_partial_likelihood,
                                 eval_batch_size,
                                 eval_frequency,
                                 eval_files,
                                 learning_rate,
-                                job_dir)
+                                job_dir,
+                                eval_features=features,
+                                eval_labels=labels)
 
     # Tensorboard logs callback
     tblog = TensorBoard(

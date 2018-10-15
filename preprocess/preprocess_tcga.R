@@ -1,3 +1,5 @@
+data <- read.csv("Expr_ClinData_marker.txt", sep="\t")
+
 data <- data[!is.na(data[,960]),]
 data[,961] <- abs(data[,961]-1)
 

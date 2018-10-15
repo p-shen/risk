@@ -69,9 +69,9 @@ class ContinuousEval(Callback):
                     eval_generator,
                     steps=eval_steps)
 
-                hazard_predict = surv_model.predict(eval_features)
+                hazard_predict = surv_model.predict(self.eval_features)
                 ci = model.concordance_metric(
-                    eval_labels[:, 0], hazard_predict, eval_labels[:, 1])
+                    self.eval_labels[:, 0], hazard_predict, self.eval_labels[:, 1])
 
                 print('\nEvaluation epoch[{}] metrics[Loss:{:.2f}, Concordance Index:{:.2f}]'.format(
                     epoch, loss, ci))

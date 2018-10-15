@@ -68,7 +68,7 @@ class ContinuousEval(Callback):
                                         'negative_log_partial_likelihood': model.negative_log_partial_likelihood})
                 surv_model = model.compile_model(
                     surv_model, self.learning_rate, self.loss_fn)
-                loss, acc = surv_model.evaluate_generator(
+                loss, _ = surv_model.evaluate_generator(
                     self.eval_generator,
                     steps=self.eval_steps)
 
@@ -129,14 +129,14 @@ def dispatch(train_files,
 
     # parse training files and create training data generators
     train_features, train_labels, train_cancertype = gn.processDataLabels(
-        train_files, label_index=1, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+        train_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
     train_steps_gen, train_input_size, train_generator = gn.generator_input(
         train_features, train_labels, shuffle=True, batch_size=train_batch_size,
         batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
 
     # parse validation files and create training data generators
     valid_features, valid_labels, valid_cancertype = gn.processDataLabels(
-        validation_files, label_index=1, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+        validation_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
     valid_steps_gen, valid_input_size, val_generator = gn.generator_input(
         valid_features, valid_labels, shuffle=True, batch_size=train_batch_size,
         batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
@@ -174,20 +174,20 @@ def dispatch(train_files,
                                mode='auto')
 
     # generator for CI index evaluation on test set
-    eval_features_surv, eval_labels_surv, eval_cancertypes = gn.processDataLabels(
-        eval_files, label_index="all", batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-    eval_steps, eval_input_size, eval_generator_surv = gn.generate_validation_data(
+    eval_features_surv, eval_labels_surv, _ = gn.processDataLabels(
+        eval_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+    eval_generator_surv = gn.generate_validation_data(
         eval_features_surv, eval_labels_surv, batch_size=train_batch_size)
 
     # generator for CI index evaluation on training set
-    training_features_surv, training_labels_surv, training_cancertypes = gn.processDataLabels(
-        train_files, label_index="all", batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-    _, _, training_generator_surv = gn.generate_validation_data(
+    training_features_surv, training_labels_surv, _ = gn.processDataLabels(
+        train_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+    training_generator_surv = gn.generate_validation_data(
         training_features_surv, training_labels_surv, batch_size=train_batch_size)
 
     # generator model loss calculation
-    eval_features_censor, eval_labels_censor, eval_cancertypes = gn.processDataLabels(
-        eval_files, label_index=1, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+    eval_features_censor, eval_labels_censor, _ = gn.processDataLabels(
+        eval_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
     eval_steps, eval_input_size, eval_generator_censor = gn.generator_input(
         eval_features_censor, eval_labels_censor, shuffle=False, batch_size=train_batch_size, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
 

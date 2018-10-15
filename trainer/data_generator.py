@@ -27,7 +27,7 @@ def normalize(data):
     return data
 
 
-def processDataLabels(input_file, label_index=0, batch_by_type=False, normalize=True):
+def processDataLabels(input_file, batch_by_type=False, normalize=True):
     # Read in file
     data = pd.read_csv(input_file, sep="\t")
 
@@ -48,10 +48,6 @@ def processDataLabels(input_file, label_index=0, batch_by_type=False, normalize=
     # process into a numpy array
     features = features.values
     labels = labels.values
-
-    # only get the label based on label index
-    if label_index != "all":
-        labels = labels[:, label_index].reshape(-1, 1)
 
     if batch_by_type:
         return features, labels, cancertype
@@ -126,7 +122,7 @@ def generator_input(features, labels, cancertype=None, shuffle=True, batch_size=
                 idx = np.argsort(abs(y[:, 0]))[::-1]
                 X = X[idx, :]
                 # sort by survival time and take censored data
-                y = y[idx]
+                y = y[idx, 1].reshape(-1, 1)
 
                 yield X, y
 
@@ -138,14 +134,8 @@ def generate_validation_data(features, labels, batch_size=64):
       Takes features and labels and returns a generator for the features and survival time
 
       Returns:
-      num_batches_per_epoch -- The number of batches per epoch based on data size
-      input_size -- the dimensions of the input data
       data_generator() -- the generator function to yield the features and survival time
       """
-
-    num_batches_per_epoch = int((len(features) - 1) / batch_size) + 1
-
-    input_size = features.shape[1]
 
     # Sorts the batches by survival time
     def data_generator():
@@ -153,12 +143,13 @@ def generate_validation_data(features, labels, batch_size=64):
             data_size = len(features)
 
             shuffle_indices = np.random.permutation(np.arange(data_size))
-            shuffled_features = features[shuffle_indices[0:batch_size, ], :]
-            shuffled_labels = labels[shuffle_indices[0:batch_size, ], :]
+            end_index = min(batch_size, len(shuffle_indices))
+            shuffled_features = features[shuffle_indices[0:end_index, ], :]
+            shuffled_labels = labels[shuffle_indices[0:end_index, ], :]
 
             yield shuffled_features, shuffled_labels
 
-    return num_batches_per_epoch, input_size, data_generator()
+    return data_generator()
 
 
 def generate_data():
@@ -166,6 +157,22 @@ def generate_data():
     label = np.random.rand(100, 2)
 
     return(train, label)
+
+
+def test_generator():
+    """
+    Only for testing purposes
+    """
+    eval_files = "data/tcga/EvalData.txt"
+    BATCH_SIZE = 20
+
+    # generator model loss calculation
+    feature, labels, _ = processDataLabels(
+        eval_files, batch_by_type=False, normalize=False)
+    generator = generate_validation_data(
+        feature, labels, BATCH_SIZE)
+
+    return generator
 
 
 if __name__ == '__main__':
@@ -179,15 +186,15 @@ if __name__ == '__main__':
 
     # generator model loss calculation
     eval_features_censor, eval_labels_censor, eval_cancertypes = processDataLabels(
-        eval_files, label_index=1, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+        eval_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
     eval_steps, eval_input_size, eval_generator_censor = generator_input(
         eval_features_censor, eval_labels_censor, shuffle=shuffle, batch_size=BATCH_SIZE, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
 
     # generator for CI index evaluation
     eval_features_surv, eval_labels_surv, eval_cancertypes = processDataLabels(
-        eval_files, label_index="all", batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-    eval_steps, eval_input_size, eval_generator_surv = generate_validation_data(
-        eval_features_surv, eval_labels_surv, batch_size=BATCH_SIZE)
+        eval_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+    eval_generator_surv = generate_validation_data(
+        eval_features_surv, eval_labels_surv[:, 0], batch_size=BATCH_SIZE)
 
     # testing censor generator
     index = 0

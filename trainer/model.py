@@ -11,7 +11,7 @@ from keras.utils import np_utils
 from keras.backend import relu, softmax
 from keras.models import load_model
 
-from .data_generator import generator_input, processDataLabels
+from .data_generator import generator_input, processDataLabels, test_generator
 
 import numpy as np
 from lifelines.utils import concordance_index
@@ -123,15 +123,16 @@ if __name__ == '__main__':
 
     eval_file = "/Users/Peter/Documents/GitHub/risk/data/tcga/EvalData.txt"
 
-    eval_steps, input_size, eval_generator = generator_input(
-        eval_file, shuffle=False, batch_size=30, batch_by_type=True)
+    eval_steps, input_size, eval_generator = test_generator()
     loss, acc = surv_model.evaluate_generator(
         eval_generator,
         steps=eval_steps)
 
-    # calculate concordance index
-    features, labels, cancertypes = processDataLabels(
-        eval_file)
-    hazard_predict = surv_model.predict(features)
-    ci = concordance_metric(labels[:, 0], hazard_predict, labels[:, 1])
+    # evaluate CI index for evaluation set
+    hazard_features, surv_labels = next(eval_generator)
+
+    hazard_predict = surv_model.predict(hazard_features)
+    ci = concordance_metric(
+        surv_labels[:, 0], hazard_predict, surv_labels[:, 1])
+
     print(ci)

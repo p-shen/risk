@@ -67,11 +67,14 @@ def model_fn(input_dim,
     # TODO support parameters to build the network
     model = models.Sequential()
     model.add(layers.Dense(256, input_dim=input_dim))
-    model.add(layers.Dense(256, activation='relu'))
-    model.add(layers.Dropout(0.25))
-    model.add(layers.Dense(128, activation='relu'))
-    model.add(layers.Dense(128, activation='relu'))
-    model.add(layers.Dropout(0.25))
+
+    model.add(layers.Dense(256))
+    model.add(layers.LeakyReLU(alpha=0.1))
+
+    model.add(layers.Dense(128))
+    model.add(layers.LeakyReLU(alpha=0.1))
+
+    model.add(layers.Dropout(0.33))
     model.add(layers.Dense(labels_dim, activation='linear'))
 
     compile_model(model, learning_rate, loss_fn)

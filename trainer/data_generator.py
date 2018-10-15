@@ -153,22 +153,10 @@ def generate_validation_data(features, labels, batch_size=64):
             data_size = len(features)
 
             shuffle_indices = np.random.permutation(np.arange(data_size))
-            shuffled_features = features[shuffle_indices]
-            shuffled_labels = labels[shuffle_indices]
+            shuffled_features = features[shuffle_indices[0:batch_size, ], :]
+            shuffled_labels = labels[shuffle_indices[0:batch_size, ], :]
 
-            num_batches_per_epoch = int(
-                (len(shuffled_labels) - 1) / batch_size) + 1
-
-            for batch_num in range(num_batches_per_epoch):
-                if DEBUG:
-                    print("batch num {}".format(batch_num))
-
-                start_index = batch_num * batch_size
-                end_index = min((batch_num + 1) * batch_size, data_size)
-                X, y = shuffled_features[start_index:
-                                         end_index], shuffled_labels[start_index: end_index]
-
-                yield X, y
+            yield shuffled_features, shuffled_labels
 
     return num_batches_per_epoch, input_size, data_generator()
 

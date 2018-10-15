@@ -146,7 +146,7 @@ def dispatch(train_files,
             "Training input size is not the same as validation input size")
 
     surv_model = model.model_fn(
-        train_input_size, CLASS_SIZE, model.negative_log_partial_likelihood)
+        train_input_size, CLASS_SIZE, model.negative_log_partial_likelihood, learning_rate=learning_rate)
 
     print("Done creating data generators.")
 

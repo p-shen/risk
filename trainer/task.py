@@ -21,6 +21,7 @@ SURV_MODEL = 'surv.hdf5'
 CLASS_SIZE = 1
 
 BATCH_BY_TYPE = False
+NORMALIZE = False
 
 
 class ContinuousEval(Callback):
@@ -35,8 +36,10 @@ class ContinuousEval(Callback):
                  eval_files,
                  learning_rate,
                  job_dir,
-                 eval_features,
-                 eval_labels,
+                 eval_generator,
+                 eval_ci_generator,
+                 training_ci_generator,
+                 eval_steps,
                  steps=1000):
         self.loss_fn = loss_fn
         self.eval_batch_size = eval_batch_size
@@ -45,8 +48,10 @@ class ContinuousEval(Callback):
         self.learning_rate = learning_rate
         self.job_dir = job_dir
         self.steps = steps
-        self.eval_features = eval_features
-        self.eval_labels = eval_labels
+        self.eval_generator = eval_generator
+        self.eval_ci_generator = eval_ci_generator
+        self.training_ci_generator = training_ci_generator
+        self.eval_steps = eval_steps
 
     def on_epoch_begin(self, epoch, logs={}):
         if epoch > 0 and epoch % self.eval_frequency == 0:
@@ -63,22 +68,33 @@ class ContinuousEval(Callback):
                                         'negative_log_partial_likelihood': model.negative_log_partial_likelihood})
                 surv_model = model.compile_model(
                     surv_model, self.learning_rate, self.loss_fn)
-                eval_steps, input_size, eval_generator = gn.generator_input(
-                    self.eval_files, shuffle=False, batch_size=self.eval_batch_size, batch_by_type=BATCH_BY_TYPE)
                 loss, acc = surv_model.evaluate_generator(
-                    eval_generator,
-                    steps=eval_steps)
+                    self.eval_generator,
+                    steps=self.eval_steps)
 
-                hazard_predict = surv_model.predict(self.eval_features)
+                # evaluate CI index for evaluation set
+                hazard_features, surv_labels = next(self.eval_ci_generator)
+
+                hazard_predict = surv_model.predict(hazard_features)
                 ci = model.concordance_metric(
-                    self.eval_labels[:, 0], hazard_predict, self.eval_labels[:, 1])
+                    surv_labels[:, 0], hazard_predict, surv_labels[:, 1])
 
-                print('\nEvaluation epoch[{}] metrics[Loss:{:.2f}, Concordance Index:{:.2f}]'.format(
-                    epoch, loss, ci))
+                # evaluate CI index for training set
+                training_hazard_features, training_surv_labels = next(
+                    self.training_ci_generator)
+
+                training_hazard_predict = surv_model.predict(
+                    training_hazard_features)
+                ci_training = model.concordance_metric(
+                    training_surv_labels[:, 0], training_hazard_predict, training_surv_labels[:, 1])
+
+                print('\nEvaluation epoch[{}] metrics[Loss:{:.2f}, Concordance Index Training: {:.2f}, Concordance Index Evaluation:{:.2f}]'.format(
+                    epoch, loss, ci_training, ci))
 
                 # write out concordance index to a file for graphing later
                 with open(os.path.join(self.job_dir, "concordance.tsv"), "a") as myfile:
-                    myfile.write('{}\t{:.2f}\n'.format(epoch, ci))
+                    myfile.write('{}\t{:.2f}\t{:.2f}\n'.format(
+                        epoch, ci_training, ci))
 
                 if self.job_dir.startswith("gs://"):
                     copy_file_to_gcs(self.job_dir, checkpoints[-1])
@@ -109,6 +125,33 @@ def dispatch(train_files,
     except:
         pass
 
+    print("Creating data generators...")
+
+    # parse training files and create training data generators
+    train_features, train_labels, train_cancertype = gn.processDataLabels(
+        train_files, label_index=1, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+    train_steps_gen, train_input_size, train_generator = gn.generator_input(
+        train_features, train_labels, shuffle=True, batch_size=train_batch_size,
+        batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+
+    # parse validation files and create training data generators
+    valid_features, valid_labels, valid_cancertype = gn.processDataLabels(
+        validation_files, label_index=1, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+    valid_steps_gen, valid_input_size, val_generator = gn.generator_input(
+        valid_features, valid_labels, shuffle=True, batch_size=train_batch_size,
+        batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+
+    if train_input_size != valid_input_size:
+        raise ValueError(
+            "Training input size is not the same as validation input size")
+
+    surv_model = model.model_fn(
+        train_input_size, CLASS_SIZE, model.negative_log_partial_likelihood)
+
+    print("Done creating data generators.")
+
+    print("Creating model checkpoints...")
+
     # Unhappy hack to work around h5py not being able to write to GCS.
     # Force snapshots and saves to local filesystem, then copy them over to GCS.
     checkpoint_path = FILE_PATH
@@ -130,9 +173,23 @@ def dispatch(train_files,
                                verbose=0,
                                mode='auto')
 
-    # calculate concordance index
-    features, labels, cancertypes = gn.processDataLabels(
-        eval_files, batch_by_type=BATCH_BY_TYPE)
+    # generator for CI index evaluation on test set
+    eval_features_surv, eval_labels_surv, eval_cancertypes = gn.processDataLabels(
+        eval_files, label_index="all", batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+    eval_steps, eval_input_size, eval_generator_surv = gn.generate_validation_data(
+        eval_features_surv, eval_labels_surv, batch_size=train_batch_size)
+
+    # generator for CI index evaluation on training set
+    training_features_surv, training_labels_surv, training_cancertypes = gn.processDataLabels(
+        train_files, label_index="all", batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+    _, _, training_generator_surv = gn.generate_validation_data(
+        training_features_surv, training_labels_surv, batch_size=train_batch_size)
+
+    # generator model loss calculation
+    eval_features_censor, eval_labels_censor, eval_cancertypes = gn.processDataLabels(
+        eval_files, label_index=1, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+    eval_steps, eval_input_size, eval_generator_censor = gn.generator_input(
+        eval_features_censor, eval_labels_censor, shuffle=False, batch_size=train_batch_size, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
 
     # Continuous eval callback
     evaluation = ContinuousEval(model.negative_log_partial_likelihood,
@@ -141,8 +198,10 @@ def dispatch(train_files,
                                 eval_files,
                                 learning_rate,
                                 job_dir,
-                                eval_features=features,
-                                eval_labels=labels)
+                                eval_generator=eval_generator_censor,
+                                eval_ci_generator=eval_generator_surv,
+                                training_ci_generator=training_generator_surv,
+                                eval_steps=eval_steps)
 
     # Tensorboard logs callback
     tblog = TensorBoard(
@@ -154,23 +213,20 @@ def dispatch(train_files,
 
     cb = [checkpoint, evaluation, early_stop, tblog]
 
-    print("Created checkpoints")
+    print("Done creating model checkpoints.")
 
-    train_steps_gen, input_size, generator = gn.generator_input(
-        train_files, shuffle=True, batch_size=train_batch_size, batch_by_type=BATCH_BY_TYPE)
-    valid_steps_gen, input_size, val_generator = gn.generator_input(
-        validation_files, shuffle=True, batch_size=train_batch_size, batch_by_type=BATCH_BY_TYPE)
-    surv_model = model.model_fn(
-        input_size, CLASS_SIZE, model.negative_log_partial_likelihood)
+    print("Started training.")
 
     surv_model.fit_generator(
-        generator,
-        steps_per_epoch=train_steps,
+        train_generator,
+        steps_per_epoch=train_steps_gen,
         epochs=num_epochs,
         validation_data=val_generator,
-        validation_steps=train_steps,
+        validation_steps=valid_steps_gen,
         verbose=1,  # for tensorboard visualization
         callbacks=cb)
+
+    print("Saving final model as {}".format(SURV_MODEL))
 
     # Unhappy hack to work around h5py not being able to write to GCS.
     # Force snapshots and saves to local filesystem, then copy them over to GCS.

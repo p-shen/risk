@@ -69,7 +69,7 @@ def model_fn(input_dim,
     model.add(layers.Dense(256, input_dim=input_dim))
     model.add(layers.Dense(256, activation='sigmoid'))
     model.add(layers.Dense(128, activation='sigmoid'))
-    model.add(layers.Dense(128, activation='relu'))
+    model.add(layers.Dense(64, activation='relu'))
     # model.add(layers.Dropout(0.25))
     model.add(layers.Dense(labels_dim, activation='linear'))
 

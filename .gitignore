@@ -1,4 +1,4 @@
 experiment/data
 data
-models
+models_test
 *.pyc

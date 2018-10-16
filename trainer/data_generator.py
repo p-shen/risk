@@ -10,7 +10,9 @@ DEBUG = False
 
 
 def normalize(data):
-    # perform quantile normalization
+    """
+    Perform quantile normalization on a dataframe
+    """
 
     # force data into floats for np calculations
     data = data.astype('float64')
@@ -69,6 +71,8 @@ def generator_input(features, labels, cancertype=None, shuffle=True, batch_size=
     #     input_file, batch_by_type=batch_by_type, normalize=normalize)
 
     if (batch_by_type):
+        if cancertype == None:
+            raise NameError("cancertype not found")
         types = cancertype.dtype.categories
 
     num_batches_per_epoch = int((len(features) - 1) / batch_size) + 1
@@ -137,11 +141,11 @@ def generate_validation_data(features, labels, batch_size=64):
       data_generator() -- the generator function to yield the features and survival time
       """
 
-    # Sorts the batches by survival time
+    data_size = len(features)
+
+    # Samples from the data and returns a batch
     def data_generator():
         while True:
-            data_size = len(features)
-
             shuffle_indices = np.random.permutation(np.arange(data_size))
             end_index = min(batch_size, len(shuffle_indices))
             shuffled_features = features[shuffle_indices[0:end_index, ], :]
@@ -184,34 +188,37 @@ if __name__ == '__main__':
     shuffle = True
     eval_files = "data/tcga/EvalData.txt"
 
-    # generator model loss calculation
-    eval_features_censor, eval_labels_censor, eval_cancertypes = processDataLabels(
+    eval_features, eval_labels, eval_cancertypes = processDataLabels(
         eval_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+
+    # generator model loss calculation
     eval_steps, eval_input_size, eval_generator_censor = generator_input(
-        eval_features_censor, eval_labels_censor, shuffle=shuffle, batch_size=BATCH_SIZE, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+        eval_features, eval_labels, shuffle=shuffle, batch_size=BATCH_SIZE, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
 
     # generator for CI index evaluation
-    eval_features_surv, eval_labels_surv, eval_cancertypes = processDataLabels(
-        eval_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
     eval_generator_surv = generate_validation_data(
-        eval_features_surv, eval_labels_surv[:, 0], batch_size=BATCH_SIZE)
+        eval_features, eval_labels, batch_size=BATCH_SIZE)
 
     # testing censor generator
     index = 0
-    for _ in eval_generator_censor:
+    for X, y in eval_generator_censor:
         print("index is {}".format(index))
+        print(X)
+        print(y)
         index += 1
-        if index < 5:
+        if index < 3:
             pass
         else:
             break
 
     # testing surv time generator
     index = 0
-    for _ in eval_generator_surv:
+    for X, y in eval_generator_surv:
         print("index is {}".format(index))
+        print(X)
+        print(y)
         index += 1
-        if index < 5:
+        if index < 3:
             pass
         else:
             break

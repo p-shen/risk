@@ -128,14 +128,14 @@ def dispatch(train_files,
     print("Creating data generators...")
 
     # parse training files and create training data generators
-    train_features, train_labels, train_cancertype = gn.processDataLabels(
+    train_features, train_labels, _ = gn.processDataLabels(
         train_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
     train_steps_gen, train_input_size, train_generator = gn.generator_input(
         train_features, train_labels, shuffle=True, batch_size=train_batch_size,
         batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
 
     # parse validation files and create training data generators
-    valid_features, valid_labels, valid_cancertype = gn.processDataLabels(
+    valid_features, valid_labels, _ = gn.processDataLabels(
         validation_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
     valid_steps_gen, valid_input_size, val_generator = gn.generator_input(
         valid_features, valid_labels, shuffle=True, batch_size=train_batch_size,
@@ -173,23 +173,20 @@ def dispatch(train_files,
                                verbose=0,
                                mode='auto')
 
-    # generator for CI index evaluation on test set
-    eval_features_surv, eval_labels_surv, _ = gn.processDataLabels(
+    # process evaluation files
+    eval_features, eval_labels, _ = gn.processDataLabels(
         eval_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-    eval_generator_surv = gn.generate_validation_data(
-        eval_features_surv, eval_labels_surv, batch_size=train_batch_size)
-
-    # generator for CI index evaluation on training set
-    training_features_surv, training_labels_surv, _ = gn.processDataLabels(
-        train_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-    training_generator_surv = gn.generate_validation_data(
-        training_features_surv, training_labels_surv, batch_size=train_batch_size)
 
     # generator model loss calculation
-    eval_features_censor, eval_labels_censor, _ = gn.processDataLabels(
-        eval_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-    eval_steps, eval_input_size, eval_generator_censor = gn.generator_input(
-        eval_features_censor, eval_labels_censor, shuffle=False, batch_size=train_batch_size, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+    eval_steps, _, eval_generator = gn.generator_input(
+        eval_features, eval_labels, shuffle=False, batch_size=train_batch_size, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+
+    # generators for the evaluation and training datasets for calculating
+    # concordance index
+    eval_ci_generator = gn.generate_validation_data(
+        eval_features, eval_labels, batch_size=train_batch_size)
+    training_ci_generator = gn.generate_validation_data(
+        train_features, train_labels, batch_size=train_batch_size)
 
     # Continuous eval callback
     evaluation = ContinuousEval(model.negative_log_partial_likelihood,
@@ -198,9 +195,9 @@ def dispatch(train_files,
                                 eval_files,
                                 learning_rate,
                                 job_dir,
-                                eval_generator=eval_generator_censor,
-                                eval_ci_generator=eval_generator_surv,
-                                training_ci_generator=training_generator_surv,
+                                eval_generator=eval_generator,
+                                eval_ci_generator=eval_ci_generator,
+                                training_ci_generator=training_ci_generator,
                                 eval_steps=eval_steps)
 
     # Tensorboard logs callback
@@ -218,7 +215,7 @@ def dispatch(train_files,
     print("Started training.")
 
     surv_model.fit_generator(
-        train_generator,
+        generator=train_generator,
         steps_per_epoch=train_steps_gen,
         epochs=num_epochs,
         validation_data=val_generator,

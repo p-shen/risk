@@ -61,7 +61,6 @@ def concordance_metric(survival_time, predicted_risk, censor):
 def model_fn(input_dim,
              labels_dim,
              loss_fn,
-             hidden_units=[100, 70, 50, 20],
              learning_rate=0.001):
 
     # TODO support parameters to build the network

@@ -61,16 +61,17 @@ def concordance_metric(survival_time, predicted_risk, censor):
 def model_fn(input_dim,
              labels_dim,
              loss_fn,
+             hidden_units=[100, 70, 50, 20],
              learning_rate=0.001):
 
     # TODO support parameters to build the network
     model = models.Sequential()
     model.add(layers.Dense(512, input_dim=input_dim))
 
-    model.add(layers.Dense(256, activation="sigmoid"))
+    model.add(layers.Dense(256, activation="relu"))
     # model.add(layers.LeakyReLU(alpha=0.1))
 
-    model.add(layers.Dense(256, activation="sigmoid"))
+    model.add(layers.Dense(256, activation="relu"))
     # model.add(layers.LeakyReLU(alpha=0.1))
 
     model.add(layers.Dropout(0.5))

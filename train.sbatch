@@ -16,12 +16,13 @@ source /home/pzs2/keras/bin/activate
 today=`date '+%m_%d__%H_%M'`;
 
 JOB_DIR="/home/pzs2/capstone/models/batch_by_type_normalized_$today"
+DATA_DIR="/home/pzs2/capstone/proj/TCGA_LiuLab/pancancer_normalize_by_type"
 
 TRAIN_STEPS=35
 BATCH_SIZE=256
-TRAIN_FILE=/home/pzs2/capstone/proj/TCGA_LiuLab/pancancer_normalize_by_type/TrainingData.txt
-EVAL_FILE=/home/pzs2/capstone/proj/TCGA_LiuLab/pancancer_normalize_by_type/EvalData.txt
-VALIDATION_FILE=/home/pzs2/capstone/proj/TCGA_LiuLab/pancancer_normalize_by_type/TestData.txt
+TRAIN_FILE="$DATA_DIR/TrainingData.txt"
+EVAL_FILE="$DATA_DIR/EvalData.txt"
+VALIDATION_FILE="$DATA_DIR/TestData.txt"
 LEARNING_RATE=0.03
 python -m trainer.task --train-files $TRAIN_FILE \
                        --eval-files $EVAL_FILE \

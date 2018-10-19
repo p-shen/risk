@@ -35,10 +35,10 @@ def negative_log_partial_likelihood(censor, risk):
 
     # calculate negative log likelihood from estimated risk
     epsilon = 0.001
-    hazard_ratio = K.exp(risk + epsilon)
+    hazard_ratio = K.exp(risk)
 
     # cumsum on sorted surv time accounts for concordance
-    log_risk = K.log(tf.cumsum(hazard_ratio))
+    log_risk = K.log(tf.cumsum(hazard_ratio+epsilon))
     uncensored_likelihood = risk - log_risk
 
     # apply censor mask: 1 - dead, 0 - censor

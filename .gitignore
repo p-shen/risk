@@ -2,3 +2,4 @@ experiment/data
 data
 models_test
 *.pyc
+tmp

@@ -206,7 +206,8 @@ def dispatch(train_files,
         histogram_freq=0,
         write_graph=True,
         write_images=True,
-        embeddings_freq=0)
+        embeddings_freq=0,
+        write_grads=True)
 
     cb = [checkpoint, evaluation, early_stop, tblog]
 

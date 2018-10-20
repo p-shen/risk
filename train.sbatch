@@ -18,18 +18,18 @@ today=`date '+%m_%d__%H_%M'`;
 JOB_DIR="/home/pzs2/capstone/models/batch_by_type_normalized_$today"
 DATA_DIR="/home/pzs2/capstone/proj/TCGA_LiuLab/pancancer_normalize_by_type"
 
-TRAIN_STEPS=35
-BATCH_SIZE=256
+TRAIN_STEPS=80
+BATCH_SIZE=128
 TRAIN_FILE="$DATA_DIR/TrainingData.txt"
 EVAL_FILE="$DATA_DIR/EvalData.txt"
 VALIDATION_FILE="$DATA_DIR/TestData.txt"
-LEARNING_RATE=0.0001
+LEARNING_RATE=0.003
 python -m trainer.task --train-files $TRAIN_FILE \
                        --eval-files $EVAL_FILE \
                        --validation-files $VALIDATION_FILE \
                        --job-dir $JOB_DIR \
                        --train-steps $TRAIN_STEPS \
                        --learning-rate $LEARNING_RATE \
-                       --num-epochs 500 \
-                       --early-stop 75 \
+                       --num-epochs 1000 \
+                       --early-stop 100 \
                        --train-batch-size $BATCH_SIZE

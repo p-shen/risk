@@ -57,7 +57,7 @@ def processDataLabels(input_file, batch_by_type=False, normalize=True):
         return features, labels, None
 
 
-def generator_input(features, labels, cancertype=None, shuffle=True, batch_size=64, batch_by_type=True, normalize=True):
+def generator_input(features, labels, cancertype=None, shuffle=True, batch_size=64, batch_by_type=False, normalize=False):
     """
     Parses the input file and creates a generator for the input file
 

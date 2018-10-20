@@ -23,7 +23,7 @@ BATCH_SIZE=128
 TRAIN_FILE="$DATA_DIR/TrainingData.txt"
 EVAL_FILE="$DATA_DIR/EvalData.txt"
 VALIDATION_FILE="$DATA_DIR/TestData.txt"
-LEARNING_RATE=0.003
+LEARNING_RATE=0.005
 python -m trainer.task --train-files $TRAIN_FILE \
                        --eval-files $EVAL_FILE \
                        --validation-files $VALIDATION_FILE \

@@ -74,14 +74,16 @@ def model_fn(input_dim,
     model.add(layers.Dense(256, input_dim=input_dim,
                            kernel_regularizer=regularizers.l2(0.01),
                            activity_regularizer=regularizers.l2(0.01)))
-
+    model.add(layers.BatchNormalization())
     model.add(layers.Dense(128, activation="relu"))
+    model.add(layers.BatchNormalization())
     # # model.add(layers.LeakyReLU(alpha=0.1))
     # model.add(layers.Dropout(0.5))
     # model.add(layers.Dense(128, activation="relu"))
     # model.add(layers.Dropout(0.5))
 
     model.add(layers.Dense(64, activation="relu"))
+    model.add(layers.BatchNormalization())
     model.add(layers.Dense(labels_dim, activation='relu'))
 
     compile_model(model, learning_rate, loss_fn)

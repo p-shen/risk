@@ -138,8 +138,10 @@ def dispatch(train_files,
     valid_features, valid_labels, _ = gn.processDataLabels(
         validation_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
     valid_steps_gen, valid_input_size, val_generator = gn.generator_input(
-        valid_features, valid_labels, shuffle=True, batch_size=train_batch_size,
+        valid_features, valid_labels, shuffle=True, batch_size=500,
         batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+
+    valid_feature_data, valid_labels_data = next(val_generator)
 
     if train_input_size != valid_input_size:
         raise ValueError(
@@ -220,8 +222,8 @@ def dispatch(train_files,
         generator=train_generator,
         steps_per_epoch=train_steps_gen,
         epochs=num_epochs,
-        validation_data=val_generator,
-        validation_steps=valid_steps_gen,
+        validation_data=(valid_feature_data, valid_labels_data),
+        validation_steps=10,
         verbose=1,  # for tensorboard visualization
         callbacks=cb)
 

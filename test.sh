@@ -17,6 +17,6 @@ python -m trainer.task --train-files $TRAIN_FILE \
                        --job-dir $JOB_DIR \
                        --train-steps $TRAIN_STEPS \
                        --learning-rate $LEARNING_RATE \
-                       --num-epochs 5 \
+                       --num-epochs 6 \
                        --early-stop 10 \
                        --train-batch-size $BATCH_SIZE

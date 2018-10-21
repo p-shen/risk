@@ -82,16 +82,19 @@ def model_fn(input_dim,
 
     model.add(layers.Dense(256, activation="relu"))
     model.add(layers.BatchNormalization())
-    model.add(layers.Dropout(0.5))
-
     model.add(layers.Dense(256, activation="relu"))
     model.add(layers.BatchNormalization())
-    model.add(layers.Dropout(0.5))
-
     model.add(layers.Dense(256, activation="relu"))
     model.add(layers.BatchNormalization())
-    model.add(layers.Dropout(0.5))
 
+    model.add(layers.Dense(128, activation="relu"))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Dense(128, activation="relu"))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Dense(128, activation="relu"))
+    model.add(layers.BatchNormalization())
+
+    model.add(layers.Dropout(0.5))
     model.add(layers.Dense(labels_dim, activation='relu'))
 
     compile_model(model, learning_rate, loss_fn)

@@ -205,10 +205,9 @@ def dispatch(train_files,
     # Tensorboard logs callback
     tblog = TensorBoard(
         log_dir=os.path.join(job_dir, 'logs'),
-        histogram_freq=1,
+        histogram_freq=0,
         write_graph=True,
         write_images=False,
-        write_grads=True,
         embeddings_freq=0
     )
 

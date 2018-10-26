@@ -15,8 +15,8 @@ source /home/pzs2/keras/bin/activate
 
 today=`date '+%m_%d__%H_%M'`;
 
-JOB_DIR="/home/pzs2/capstone/models/surv_immune_xfer_$today"
-DATA_DIR="/home/pzs2/capstone/proj/TCGA_processed/pancancer_all_immune"
+JOB_DIR="/home/pzs2/capstone/models/no_norm_$today"
+DATA_DIR="/home/pzs2/capstone/proj/TCGA_processed/pancancer_all_immune_non_norm_surv"
 
 # Training survival model on TCGA survival information
 JOB_DIR_MODEL_1="$JOB_DIR/surv"
@@ -49,46 +49,6 @@ python -m trainer.task --train-files $TRAIN_FILE $TRAIN_LABEL \
                        --learning-rate $LEARNING_RATE \
                        --num-epochs 500 \
                        --early-stop 100 \
-                       --train-batch-size $BATCH_SIZE \
-                       --eval-frequency 10 \
-                       --checkpoint-epochs 5
-                       
-
-
-# Training on immune gene expression
-JOB_DIR_MODEL_1 = "$JOB_DIR/immune"
-
-TRAIN_STEPS=80
-BATCH_SIZE=128
-LEARNING_RATE=0.003
-
-TRAIN_FILE="$DATA_DIR/TrainingData.txt"
-EVAL_FILE="$DATA_DIR/EvalData.txt"
-VALIDATION_FILE="$DATA_DIR/TestData.txt"
-TRAIN_LABEL="$DATA_DIR/immune.genes.train.txt"
-EVAL_LABEL="$DATA_DIR/immune.genes.eval.txt"
-VALIDATION_LABEL="$DATA_DIR/immune.genes.test.txt"
-LOSS_FN="mean_squared_error"
-ACT_FN="relu"
-CLASS_SIZE=2
-MODEL2_FILE_NAME="genes.hdf5"
-
-PREV_MODEL="$JOB_DIR_MODEL_1/$MODEL1_FILE_NAME"
-
-python -m trainer.task --train-files $TRAIN_FILE $TRAIN_LABEL \
-                       --validation-files $VALIDATION_FILE $VALIDATION_LABEL \
-                       --eval-files $EVAL_FILE $EVAL_LABEL \
-                       --is-transfer \
-                       --prev-model $PREV_MODEL \
-                       --loss-fn $LOSS_FN \
-                       --activation-fn $ACT_FN \
-                       --class-size $CLASS_SIZE \
-                       --job-dir $JOB_DIR \
-                       --model-file-name $MODEL2_FILE_NAME \
-                       --train-steps $TRAIN_STEPS \
-                       --learning-rate $LEARNING_RATE \
-                       --num-epochs 200 \
-                       --early-stop 50 \
                        --train-batch-size $BATCH_SIZE \
                        --eval-frequency 10 \
                        --checkpoint-epochs 5

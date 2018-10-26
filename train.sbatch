@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH -p short   # queue name
-#SBATCH -t 0-11:59       # hours:minutes runlimit after which job will be killed.
-#SBATCH -n 20      # number of cores requested
+#SBATCH -t 0-08:00       # hours:minutes runlimit after which job will be killed.
+#SBATCH -n 16      # number of cores requested
 #SBATCH --mem=32G # memory requested
 #SBATCH -J xfer_chain         # Job name
 #SBATCH -o %j.out       # File to which standard out will be written
@@ -56,7 +56,7 @@ python -m trainer.task --train-files $TRAIN_FILE $TRAIN_LABEL \
 
 
 # Training on immune gene expression
-JOB_DIR_MODEL_1 = "$JOB_DIR/immune"
+JOB_DIR_MODEL_2 = "$JOB_DIR/immune"
 
 TRAIN_STEPS=80
 BATCH_SIZE=128
@@ -83,12 +83,12 @@ python -m trainer.task --train-files $TRAIN_FILE $TRAIN_LABEL \
                        --loss-fn $LOSS_FN \
                        --activation-fn $ACT_FN \
                        --class-size $CLASS_SIZE \
-                       --job-dir $JOB_DIR \
+                       --job-dir $JOB_DIR_MODEL_2 \
                        --model-file-name $MODEL2_FILE_NAME \
                        --train-steps $TRAIN_STEPS \
                        --learning-rate $LEARNING_RATE \
-                       --num-epochs 200 \
-                       --early-stop 50 \
+                       --num-epochs 250 \
+                       --early-stop 100 \
                        --train-batch-size $BATCH_SIZE \
                        --eval-frequency 10 \
                        --checkpoint-epochs 5

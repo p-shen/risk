@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH -p short   # queue name
-#SBATCH -t 0-4:00       # hours:minutes runlimit after which job will be killed.
-#SBATCH -n 24      # number of cores requested
+#SBATCH -t 0-11:59       # hours:minutes runlimit after which job will be killed.
+#SBATCH -n 20      # number of cores requested
 #SBATCH --mem=32G # memory requested
 #SBATCH -J xfer_chain         # Job name
 #SBATCH -o %j.out       # File to which standard out will be written

@@ -11,8 +11,6 @@ from keras.utils import np_utils
 from keras.backend import relu, softmax
 from keras.models import load_model
 
-from .data_generator import generator_input, processDataLabels, test_generator
-
 import numpy as np
 from lifelines.utils import concordance_index
 
@@ -57,7 +55,7 @@ def negative_log_partial_likelihood(censor, risk):
 def concordance_metric(survival_time, predicted_risk, censor):
     # calculate the concordance index
     epsilon = 0.001
-    partial_hazard = np.exp(-(predicted_risk+epsilon)).flatten()
+    partial_hazard = np.exp(-(predicted_risk+epsilon))
     censor = censor.astype(int)
     ci = concordance_index(survival_time, partial_hazard, censor)
     return ci
@@ -66,7 +64,7 @@ def concordance_metric(survival_time, predicted_risk, censor):
 def model_fn(input_dim,
              labels_dim,
              loss_fn,
-             hidden_units=[100, 70, 50, 20],
+             activation_fn,
              learning_rate=0.001):
 
     # TODO support parameters to build the network
@@ -75,16 +73,16 @@ def model_fn(input_dim,
     # model.add(layers.Dropout(0.5))
 
     model = models.Sequential()
-    model.add(layers.Dense(1024, input_dim=input_dim,
+    model.add(layers.Dense(512, input_dim=input_dim,
                            kernel_regularizer=regularizers.l2(0.01),
                            activity_regularizer=regularizers.l2(0.01)))
     model.add(layers.BatchNormalization())
 
-    model.add(layers.Dense(512, activation="relu"))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dense(512, activation="relu"))
+    model.add(layers.Dense(256, activation="relu"))
     model.add(layers.BatchNormalization())
     model.add(layers.Dense(256, activation="relu"))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Dense(128, activation="relu"))
     model.add(layers.BatchNormalization())
     model.add(layers.Dropout(0.5))
 
@@ -99,17 +97,47 @@ def model_fn(input_dim,
     model.add(layers.Dropout(0.5))
 
     model.add(layers.Dense(32, activation="relu"))
-    model.add(layers.Dense(labels_dim, activation='linear'))
+    model.add(layers.Dense(labels_dim, activation=activation_fn))
+
+    compile_model(model, learning_rate, loss_fn)
+    return model
+
+
+def model_fn_xfer(model,
+                  class_size,
+                  loss_fn,
+                  activation_fn,
+                  learning_rate=0.001,
+                  freeze=False,
+                  freeze_layers=-2):
+    '''Remove the last layer and add in another layer for training
+    freeze -- if any layers should be frozen
+    freeze_layers -- how many layers from the last layer to freeze
+    '''
+
+    print("""Performing transfer learning on previous model with 
+    loss fn {} and activation fn {}""".format(loss_fn, activation_fn))
+
+    model.pop()
+    model.add(layers.Dense(class_size, activation=activation_fn,
+                           name="xfer_dense_output"))
+
+    if freeze:
+        for layer in model.layers[0:freeze_layers]:
+            layer.trainable = False
 
     compile_model(model, learning_rate, loss_fn)
     return model
 
 
 def compile_model(model, learning_rate, loss_fn):
+    print("Compiling model with loss fn {}".format(loss_fn))
     model.compile(loss=loss_fn,
                   optimizer=keras.optimizers.Adam(
                       lr=learning_rate, clipvalue=0.5, clipnorm=1.0),
                   metrics=['accuracy'])
+
+    print(model.summary())
     return model
 
 
@@ -131,44 +159,9 @@ def to_savedmodel(model, export_path):
         builder.save()
 
 
-if __name__ == '__main__':
-    DEBUG = True
+def load_savedmodel(file_path, custom_objects):
+    if file_path == None:
+        raise Exception("No model specified for loading.")
 
-    survival_time = np.array(
-        [361., 1919., 989., 2329., 3622., 871., 1126., 1431., 669., 791.])
-    partial_hazard = np.array([0.36544856, 0.3840349, 0.36263838, 0.36480516,
-                               0.36792752, 0.3759846, 0.34084716, 0.35269484, 0.329434, 0.3364767])
-    censor = np.array([0, 1, 1, 1, 0, 0, 1, 1, 1, 1])
-
-    ci = concordance_metric(survival_time, partial_hazard, censor)
-    print(ci)
-
-    surv_model = load_model(filepath="/Users/Peter/Documents/GitHub/risk/tmp/models_test/type_norm_10_19__15_40/surv.hdf5", custom_objects={
-        'negative_log_partial_likelihood': negative_log_partial_likelihood}, compile=True)
-    surv_model = compile_model(
-        surv_model, 0.003, negative_log_partial_likelihood)
-
-    filename = "/Users/Peter/Documents/GitHub/risk/data/tcga/EvalData.txt"
-
-    features, labels, _ = processDataLabels(
-        filename, batch_by_type=False, normalize=False)
-    _, _, gen = generator_input(features, labels)
-    loss, acc = surv_model.evaluate_generator(
-        gen,
-        steps=10)
-
-    # evaluate CI index for evaluation set
-    gen = test_generator()
-    hazard_features, surv_labels = next(gen)
-
-    hazard_predict = surv_model.predict(hazard_features)
-    ci = concordance_metric(
-        surv_labels[:, 0], hazard_predict, surv_labels[:, 1])
-
-    print(ci)
-
-    neg_likelihood = negative_log_partial_likelihood(
-        surv_labels[:, 1], hazard_predict)
-
-    with K.get_session() as sess:
-        print(neg_likelihood.eval())
+    model = load_model(file_path, custom_objects)
+    return model

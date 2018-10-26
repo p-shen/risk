@@ -29,7 +29,14 @@ def normalize(data):
     return data
 
 
-def processDataLabels(input_file, batch_by_type=False, normalize=True):
+def readFile(input_file):
+    data = pd.read_csv(input_file, sep="\t")
+    data = data.values
+
+    return data
+
+
+def processDataLabels(input_file, normalize=True, batch_by_type=False):
     # Read in file
     data = pd.read_csv(input_file, sep="\t")
 
@@ -57,7 +64,7 @@ def processDataLabels(input_file, batch_by_type=False, normalize=True):
         return features, labels, None
 
 
-def generator_input(features, labels, cancertype=None, shuffle=True, batch_size=64, batch_by_type=False, normalize=False):
+def generator_survival(features, labels, cancertype=None, shuffle=True, batch_size=64, batch_by_type=False, normalize=False):
     """
     Parses the input file and creates a generator for the input file
 
@@ -133,27 +140,38 @@ def generator_input(features, labels, cancertype=None, shuffle=True, batch_size=
     return num_batches_per_epoch, input_size, data_generator()
 
 
-def generate_validation_data(features, labels, batch_size=64):
+def generator_simple(features, labels, shuffle=True, batch_size=64):
     """
-      Takes features and labels and returns a generator for the features and survival time
+      Takes features and labels and returns a generator for the features labels
 
       Returns:
-      data_generator() -- the generator function to yield the features and survival time
+      data_generator() -- the generator function to yield the features and labels
       """
 
     data_size = len(features)
+    num_batches_per_epoch = int((len(features) - 1) / batch_size) + 1
+    input_size = features.shape[1]
 
     # Samples from the data and returns a batch
     def data_generator():
         while True:
-            shuffle_indices = np.random.permutation(np.arange(data_size))
-            end_index = min(batch_size, len(shuffle_indices))
-            shuffled_features = features[shuffle_indices[0:end_index, ], :]
-            shuffled_labels = labels[shuffle_indices[0:end_index, ], :]
+            if shuffle:
+                shuffle_indices = np.random.permutation(np.arange(data_size))
+                shuffled_features = features[shuffle_indices]
+                shuffled_labels = labels[shuffle_indices]
+            else:
+                shuffled_features = features
+                shuffled_labels = labels
 
-            yield shuffled_features, shuffled_labels
+            for batch_num in range(num_batches_per_epoch):
+                start_index = batch_num * batch_size
+                end_index = min((batch_num + 1) * batch_size, data_size)
+                X, y = shuffled_features[start_index:
+                                         end_index], shuffled_labels[start_index: end_index]
 
-    return data_generator()
+                yield X, y
+
+    return num_batches_per_epoch, input_size, data_generator()
 
 
 def generate_data():
@@ -161,69 +179,3 @@ def generate_data():
     label = np.random.rand(100, 2)
 
     return(train, label)
-
-
-def test_generator():
-    """
-    Only for testing purposes
-    """
-    eval_files = "data/tcga/EvalData.txt"
-    BATCH_SIZE = 20
-
-    # generator model loss calculation
-    feature, labels, _ = processDataLabels(
-        eval_files, batch_by_type=False, normalize=False)
-    generator = generate_validation_data(
-        feature, labels, BATCH_SIZE)
-
-    return generator
-
-
-if __name__ == '__main__':
-    DEBUG = True
-
-    BATCH_SIZE = 20
-    BATCH_BY_TYPE = False
-    NORMALIZE = False
-    shuffle = True
-    eval_files = "data/tcga/EvalData.txt"
-
-    eval_features, eval_labels, eval_cancertypes = processDataLabels(
-        eval_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-
-    # generator model loss calculation
-    eval_steps, eval_input_size, eval_generator_censor = generator_input(
-        eval_features, eval_labels, shuffle=shuffle, batch_size=BATCH_SIZE, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-
-    # generator for CI index evaluation
-    eval_generator_surv = generate_validation_data(
-        eval_features, eval_labels, batch_size=BATCH_SIZE)
-
-    # testing censor generator
-    index = 0
-    for X, y in eval_generator_censor:
-        print("index is {}".format(index))
-        print(X)
-        print(y)
-        index += 1
-        if index < 3:
-            pass
-        else:
-            break
-
-    # testing surv time generator
-    index = 0
-    for X, y in eval_generator_surv:
-        print("index is {}".format(index))
-        print(X)
-        print(y)
-        index += 1
-        if index < 3:
-            pass
-        else:
-            break
-
-    # testing data processing
-    hazard_features, surv_labels = next(eval_generator_surv)
-    print(hazard_features.shape)
-    print(surv_labels.shape)

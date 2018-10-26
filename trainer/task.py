@@ -16,9 +16,6 @@ import trainer.data_generator as gn
 import trainer.model as model
 
 FILE_PATH = 'checkpoint.{epoch:04d}.hdf5'
-SURV_MODEL = 'surv.hdf5'
-
-CLASS_SIZE = 1
 
 BATCH_BY_TYPE = False
 NORMALIZE = False
@@ -33,21 +30,19 @@ class ContinuousEval(Callback):
                  loss_fn,
                  eval_batch_size,
                  eval_frequency,
-                 eval_files,
                  learning_rate,
                  job_dir,
+                 eval_ci,
                  eval_generator,
                  eval_ci_generator,
                  training_ci_generator,
-                 eval_steps,
-                 steps=1000):
+                 eval_steps):
         self.loss_fn = loss_fn
         self.eval_batch_size = eval_batch_size
-        self.eval_files = eval_files
         self.eval_frequency = eval_frequency
         self.learning_rate = learning_rate
         self.job_dir = job_dir
-        self.steps = steps
+        self.eval_ci = eval_ci
         self.eval_generator = eval_generator
         self.eval_ci_generator = eval_ci_generator
         self.training_ci_generator = training_ci_generator
@@ -64,37 +59,41 @@ class ContinuousEval(Callback):
             checkpoints = glob.glob(model_path_glob)
             if len(checkpoints) > 0:
                 checkpoints.sort()
-                surv_model = load_model(checkpoints[-1], custom_objects={
-                                        'negative_log_partial_likelihood': model.negative_log_partial_likelihood})
-                surv_model = model.compile_model(
-                    surv_model, self.learning_rate, self.loss_fn)
-                loss, _ = surv_model.evaluate_generator(
+                kmodel = model.load_savedmodel(checkpoints[-1], custom_objects={
+                    'negative_log_partial_likelihood': model.negative_log_partial_likelihood})
+                kmodel = model.compile_model(
+                    kmodel, self.learning_rate, self.loss_fn)
+                loss, acc = kmodel.evaluate_generator(
                     self.eval_generator,
                     steps=self.eval_steps)
 
-                # evaluate CI index for evaluation set
-                hazard_features, surv_labels = next(self.eval_ci_generator)
+                if self.eval_ci:
+                    # evaluate CI index for evaluation set
+                    hazard_features, surv_labels = next(self.eval_ci_generator)
 
-                hazard_predict = surv_model.predict(hazard_features)
-                ci = model.concordance_metric(
-                    surv_labels[:, 0], hazard_predict, surv_labels[:, 1])
+                    hazard_predict = kmodel.predict(hazard_features)
+                    ci = model.concordance_metric(
+                        surv_labels[:, 0], hazard_predict, surv_labels[:, 1])
 
-                # evaluate CI index for training set
-                training_hazard_features, training_surv_labels = next(
-                    self.training_ci_generator)
+                    # evaluate CI index for training set
+                    training_hazard_features, training_surv_labels = next(
+                        self.training_ci_generator)
 
-                training_hazard_predict = surv_model.predict(
-                    training_hazard_features)
-                ci_training = model.concordance_metric(
-                    training_surv_labels[:, 0], training_hazard_predict, training_surv_labels[:, 1])
+                    training_hazard_predict = kmodel.predict(
+                        training_hazard_features)
+                    ci_training = model.concordance_metric(
+                        training_surv_labels[:, 0], training_hazard_predict, training_surv_labels[:, 1])
 
-                print('\nEvaluation epoch[{}] metrics[Loss:{:.2f}, Concordance Index Training: {:.2f}, Concordance Index Evaluation:{:.2f}]'.format(
-                    epoch, loss, ci_training, ci))
-
-                # write out concordance index to a file for graphing later
-                with open(os.path.join(self.job_dir, "concordance.tsv"), "a") as myfile:
-                    myfile.write('{}\t{:.2f}\t{:.2f}\n'.format(
-                        epoch, ci_training, ci))
+                if self.eval_ci:
+                    print('\nEvaluation epoch[{}] metrics[Loss:{:.2f}, Accuracy:{:.2f}, Concordance Index Training: {:.2f}, Concordance Index Evaluation:{:.2f}]'.format(
+                        epoch, loss, acc, ci_training, ci))
+                    # write out concordance index to a file for graphing later
+                    with open(os.path.join(self.job_dir, "concordance.tsv"), "a") as myfile:
+                        myfile.write('{}\t{:.2f}\t{:.2f}\n'.format(
+                            epoch, ci_training, ci))
+                else:
+                    print('\nEvaluation epoch[{}] metrics[Loss:{:.2f}, Accuracy:{:.2f}]'.format(
+                        epoch, loss, acc))
 
                 if self.job_dir.startswith("gs://"):
                     copy_file_to_gcs(self.job_dir, checkpoints[-1])
@@ -103,55 +102,21 @@ class ContinuousEval(Callback):
                     '\nEvaluation epoch[{}] (no checkpoints found)'.format(epoch))
 
 
-def dispatch(train_files,
-             validation_files,
-             eval_files,
-             job_dir,
-             train_steps,
-             eval_steps,
-             train_batch_size,
-             eval_batch_size,
-             learning_rate,
-             eval_frequency,
-             early_stop,
-             first_layer_size,
-             scale_factor,
-             eval_num_epochs,
-             num_epochs,
-             checkpoint_epochs):
-
-    try:
-        os.makedirs(job_dir)
-    except:
-        pass
-
-    print("Creating data generators...")
-
-    # parse training files and create training data generators
-    train_features, train_labels, _ = gn.processDataLabels(
-        train_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-    train_steps_gen, train_input_size, train_generator = gn.generator_input(
-        train_features, train_labels, shuffle=True, batch_size=train_batch_size,
-        batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-
-    # parse validation files and create training data generators
-    valid_features, valid_labels, _ = gn.processDataLabels(
-        validation_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-    valid_steps_gen, valid_input_size, val_generator = gn.generator_input(
-        valid_features, valid_labels, shuffle=True, batch_size=500,
-        batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-
-    valid_feature_data, valid_labels_data = next(val_generator)
-
-    if train_input_size != valid_input_size:
-        raise ValueError(
-            "Training input size is not the same as validation input size")
-
-    surv_model = model.model_fn(
-        train_input_size, CLASS_SIZE, model.negative_log_partial_likelihood, learning_rate=learning_rate)
-
-    print("Done creating data generators.")
-
+def create_callbacks(job_dir,
+                     eval_steps,
+                     eval_features,
+                     train_features,
+                     train_labels,
+                     eval_labels,
+                     eval_generator,
+                     train_batch_size,
+                     eval_batch_size,
+                     loss_fn,
+                     learning_rate,
+                     eval_frequency,
+                     early_stop,
+                     checkpoint_epochs,
+                     eval_ci):
     print("Creating model checkpoints...")
 
     # Unhappy hack to work around h5py not being able to write to GCS.
@@ -175,32 +140,24 @@ def dispatch(train_files,
                                verbose=0,
                                mode='auto')
 
-    # process evaluation files
-    eval_features, eval_labels, _ = gn.processDataLabels(
-        eval_files, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-
-    # generator model loss calculation
-    eval_steps, _, eval_generator = gn.generator_input(
-        eval_features, eval_labels, shuffle=False, batch_size=train_batch_size, batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
-
     # generators for the evaluation and training datasets for calculating
     # concordance index
-    eval_ci_generator = gn.generate_validation_data(
+    _, _, eval_ci_generator = gn.generator_simple(
         eval_features, eval_labels, batch_size=train_batch_size)
-    training_ci_generator = gn.generate_validation_data(
+    _, _, training_ci_generator = gn.generator_simple(
         train_features, train_labels, batch_size=train_batch_size)
 
     # Continuous eval callback
-    evaluation = ContinuousEval(model.negative_log_partial_likelihood,
+    evaluation = ContinuousEval(loss_fn,
                                 eval_batch_size,
                                 eval_frequency,
-                                eval_files,
                                 learning_rate,
                                 job_dir,
-                                eval_generator=eval_generator,
-                                eval_ci_generator=eval_ci_generator,
-                                training_ci_generator=training_ci_generator,
-                                eval_steps=eval_steps)
+                                eval_ci,
+                                eval_generator,
+                                eval_ci_generator,
+                                training_ci_generator,
+                                eval_steps)
 
     # Tensorboard logs callback
     tblog = TensorBoard(
@@ -211,37 +168,163 @@ def dispatch(train_files,
         embeddings_freq=0
     )
 
+    print("Done creating model checkpoints.")
     cb = [checkpoint, evaluation, early_stop, tblog]
 
-    print("Done creating model checkpoints.")
+    return cb
+
+
+def dispatch(train_files,
+             validation_files,
+             eval_files,
+             is_transfer,
+             prev_model,
+             loss_fn,
+             activation_fn,
+             class_size,
+             job_dir,
+             model_file_name,
+             train_steps,
+             eval_steps,
+             train_batch_size,
+             eval_batch_size,
+             learning_rate,
+             eval_frequency,
+             early_stop,
+             first_layer_size,
+             scale_factor,
+             eval_num_epochs,
+             num_epochs,
+             checkpoint_epochs):
+
+    try:
+        os.makedirs(job_dir)
+    except:
+        pass
+
+    # check input lengths
+    if (len(train_files) != len(validation_files) or len(train_files) != len(validation_files) or len(validation_files) != len(eval_files)):
+        raise ValueError("Input file lengths do not match")
+
+    # Read feature files
+    train_features = gn.readFile(train_files[0])
+    valid_features = gn.readFile(validation_files[0])
+    eval_features = gn.readFile(eval_files[0])
+
+    # Read labels
+    train_labels = gn.readFile(train_files[1])
+    valid_labels = gn.readFile(validation_files[1])
+    eval_labels = gn.readFile(eval_files[1])
+
+    if is_transfer:
+        # Load model from specified path
+        kmodel = model.load_savedmodel(prev_model,
+                                       {"negative_log_partial_likelihood": model.negative_log_partial_likelihood})
+
+    print("Creating data generators...")
+    # Create data generators based on each file
+    if (loss_fn == "negative_log_partial_likelihood"):
+        # generate survival generators
+        train_steps_gen, train_input_size, train_generator = gn.generator_survival(
+            train_features, train_labels, shuffle=True, batch_size=train_batch_size,
+            batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+        valid_steps_gen, valid_input_size, val_generator = gn.generator_survival(
+            valid_features, valid_labels, shuffle=True, batch_size=train_batch_size,
+            batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+        eval_steps_gen, eval_input_size, eval_generator = gn.generator_survival(
+            eval_features, eval_labels, shuffle=False, batch_size=train_batch_size,
+            batch_by_type=BATCH_BY_TYPE, normalize=NORMALIZE)
+
+        # survival custom loss function
+        loss_fn = model.negative_log_partial_likelihood
+        eval_ci = True
+    else:
+        train_steps_gen, train_input_size, train_generator = gn.generator_simple(
+            train_features, train_labels, shuffle=True, batch_size=train_batch_size)
+        valid_steps_gen, valid_input_size, val_generator = gn.generator_simple(
+            valid_features, valid_labels, shuffle=True, batch_size=train_batch_size)
+        eval_steps_gen, eval_input_size, eval_generator = gn.generator_simple(
+            eval_features, eval_labels, shuffle=False, batch_size=train_batch_size)
+        eval_ci = False
+
+    if train_input_size != valid_input_size:
+        raise ValueError(
+            "Training input size is not the same as validation input size")
+
+    print("Done creating data generators -- {}.".format(loss_fn))
+
+    # TODO: Create callbacks based on these generators
+    cb = create_callbacks(job_dir,
+                          eval_steps,
+                          eval_features,
+                          train_features,
+                          train_labels,
+                          eval_labels,
+                          eval_generator,
+                          train_batch_size,
+                          eval_batch_size,
+                          loss_fn,
+                          learning_rate,
+                          eval_frequency,
+                          early_stop,
+                          checkpoint_epochs,
+                          eval_ci)
+
+    if is_transfer:
+        kmodel = model.model_fn_xfer(
+            kmodel, class_size, loss_fn, activation_fn, learning_rate=learning_rate)
+    else:
+        # compile model
+        kmodel = model.model_fn(
+            train_input_size, class_size, loss_fn, activation_fn, learning_rate=learning_rate)
+
+    kmodel = dispatch_model_training(kmodel,
+                                     job_dir,
+                                     model_file_name,
+                                     train_generator,
+                                     train_steps,
+                                     num_epochs,
+                                     val_generator,
+                                     cb)
+
+
+def dispatch_model_training(kmodel,
+                            job_dir,
+                            model_file_name,
+                            train_generator,
+                            train_steps,
+                            num_epochs,
+                            val_generator,
+                            cb):
 
     print("Started training.")
 
-    surv_model.fit_generator(
+    kmodel.fit_generator(
         generator=train_generator,
-        steps_per_epoch=train_steps_gen,
+        steps_per_epoch=train_steps,
         epochs=num_epochs,
-        validation_data=(valid_feature_data, valid_labels_data),
+        validation_data=val_generator,
         validation_steps=10,
         verbose=1,  # for tensorboard visualization
         callbacks=cb)
 
-    print("Saving final model as {}".format(SURV_MODEL))
+    print("Saving final model as {}".format(model_file_name))
 
     # Unhappy hack to work around h5py not being able to write to GCS.
     # Force snapshots and saves to local filesystem, then copy them over to GCS.
     if job_dir.startswith("gs://"):
-        surv_model.save(SURV_MODEL)
-        copy_file_to_gcs(job_dir, SURV_MODEL)
+        kmodel.save(model_file_name)
+        copy_file_to_gcs(job_dir, model_file_name)
     else:
-        surv_model.save(os.path.join(job_dir, SURV_MODEL))
+        kmodel.save(os.path.join(job_dir, model_file_name))
 
     # Convert the Keras model to TensorFlow SavedModel
-    model.to_savedmodel(surv_model, os.path.join(job_dir, 'export'))
+    model.to_savedmodel(kmodel, os.path.join(job_dir, 'export'))
+
+    return model
+
 
 # h5py workaround: copy local models over to GCS if the job_dir is GCS.
-
-
 def copy_file_to_gcs(job_dir, file_path):
     with file_io.FileIO(file_path, mode='rb') as input_f:
         with file_io.FileIO(os.path.join(job_dir, file_path), mode='w+') as output_f:
@@ -251,30 +334,62 @@ def copy_file_to_gcs(job_dir, file_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--train-files',
+                        nargs='*',
                         required=True,
                         type=str,
-                        help='Training files local or GCS as a tab seperated file (.tsv)')
+                        help='''Training files local or GCS as a tab seperated file (.tsv).
+                            The first file should be the features file followed by response files''')
     parser.add_argument('--validation-files',
+                        nargs='*',
                         required=True,
                         type=str,
-                        help='Validation files local or GCS as a tab seperated file (.tsv)')
+                        help='''Validation files local or GCS as a tab seperated file (.tsv).
+                            The first file should be the features file followed by response files''')
     parser.add_argument('--eval-files',
+                        nargs='*',
                         required=True,
                         type=str,
-                        help='Evaluation files local or GCS as a tab seperated file (.tsv)')
+                        help='''Evaluation files local or GCS as a tab seperated file (.tsv).
+                            The first file should be the features file followed by response files.
+                            These will be used to evaluate the model every checkpoint''')
+    parser.add_argument('--is-transfer',
+                        action="store_true",
+                        default=False,
+                        help='''Training on a new model or on previous model. If previous,
+                        need to specifiy previous model path''')
+    parser.add_argument('--prev-model',
+                        type=str,
+                        default=None,
+                        help='''Previous model file path''')
+    parser.add_argument('--loss-fn',
+                        required=True,
+                        type=str,
+                        help='Loss function to minimize')
+    parser.add_argument('--activation-fn',
+                        required=True,
+                        type=str,
+                        help='Activation functions the last layer')
+    parser.add_argument('--class-size',
+                        required=True,
+                        type=int,
+                        help='Class size for prediction')
     parser.add_argument('--job-dir',
                         required=True,
                         type=str,
                         help='GCS or local dir to write checkpoints and export model')
+    parser.add_argument('--model-file-name',
+                        required=True,
+                        type=str,
+                        help='Name of the file to save the model as. (*.hdf5)')
     parser.add_argument('--train-steps',
                         type=int,
                         default=100,
                         help="""\
-                       Maximum number of training steps to perform
-                       Training steps are in the units of training-batch-size.
-                       So if train-steps is 500 and train-batch-size if 100 then
-                       at most 500 * 100 training instances will be used to train.
-                      """)
+                        Maximum number of training steps to perform
+                        Training steps are in the units of training-batch-size.
+                        So if train-steps is 500 and train-batch-size if 100 then
+                        at most 500 * 100 training instances will be used to train.
+                        """)
     parser.add_argument('--eval-steps',
                         help='Number of steps to run evalution for at each checkpoint',
                         default=100,

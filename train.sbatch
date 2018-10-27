@@ -50,7 +50,7 @@ python -m trainer.task --train-files $TRAIN_FILE $TRAIN_LABEL \
                        --train-steps $TRAIN_STEPS \
                        --learning-rate $LEARNING_RATE \
                        --num-epochs 400 \
-                       --early-stop 10 \
+                       --early-stop 40 \
                        --train-batch-size $BATCH_SIZE \
                        --eval-frequency 10 \
                        --checkpoint-epochs 5
@@ -90,8 +90,8 @@ python -m trainer.task --train-files $TRAIN_FILE $TRAIN_LABEL \
                        --model-file-name $MODEL2_FILE_NAME \
                        --train-steps $TRAIN_STEPS \
                        --learning-rate $LEARNING_RATE \
-                       --num-epochs 100 \
-                       --early-stop 10 \
+                       --num-epochs 400 \
+                       --early-stop 40 \
                        --train-batch-size $BATCH_SIZE \
                        --eval-frequency 10 \
                        --checkpoint-epochs 5

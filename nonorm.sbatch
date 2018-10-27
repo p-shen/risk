@@ -20,7 +20,7 @@ DATA_DIR="/home/pzs2/capstone/proj/TCGA_processed/pancancer_all_immune_non_norm_
 
 TRAIN_STEPS=80
 BATCH_SIZE=128
-LEARNING_RATE=0.03
+LEARNING_RATE=0.0003
 
 TRAIN_FILE="$DATA_DIR/TrainingData.txt"
 EVAL_FILE="$DATA_DIR/EvalData.txt"

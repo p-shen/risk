@@ -1,5 +1,5 @@
-experiment/data
-data
-models_test
+./experiment/data
+./data
+./models_test
 *.pyc
-tmp
+./tmp

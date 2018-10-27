@@ -20,6 +20,7 @@ DATA_DIR="/home/pzs2/capstone/proj/TCGA_processed/pancancer_all_immune"
 
 # Training survival model on TCGA survival information
 JOB_DIR_MODEL_1="$JOB_DIR/surv"
+MODEL1_FILE_NAME="surv.hdf5"
 
 TRAIN_STEPS=80
 BATCH_SIZE=128
@@ -28,13 +29,14 @@ LEARNING_RATE=0.003
 TRAIN_FILE="$DATA_DIR/TrainingData.txt"
 EVAL_FILE="$DATA_DIR/EvalData.txt"
 VALIDATION_FILE="$DATA_DIR/TestData.txt"
+
 TRAIN_LABEL="$DATA_DIR/surv.train.txt"
 EVAL_LABEL="$DATA_DIR/surv.eval.txt"
 VALIDATION_LABEL="$DATA_DIR/surv.test.txt"
+
 LOSS_FN="negative_log_partial_likelihood"
 ACT_FN="linear"
 CLASS_SIZE=1
-MODEL1_FILE_NAME="surv.hdf5"
                        
 
 python -m trainer.task --train-files $TRAIN_FILE $TRAIN_LABEL \
@@ -56,7 +58,9 @@ python -m trainer.task --train-files $TRAIN_FILE $TRAIN_LABEL \
 
 
 # Training on immune gene expression
-JOB_DIR_MODEL_2 = "$JOB_DIR/immune"
+JOB_DIR_MODEL_2="$JOB_DIR/immune"
+MODEL2_FILE_NAME="genes.hdf5"
+PREV_MODEL="$JOB_DIR_MODEL_1/$MODEL1_FILE_NAME"
 
 TRAIN_STEPS=80
 BATCH_SIZE=128
@@ -65,15 +69,14 @@ LEARNING_RATE=0.003
 TRAIN_FILE="$DATA_DIR/TrainingData.txt"
 EVAL_FILE="$DATA_DIR/EvalData.txt"
 VALIDATION_FILE="$DATA_DIR/TestData.txt"
+
 TRAIN_LABEL="$DATA_DIR/immune.genes.train.txt"
 EVAL_LABEL="$DATA_DIR/immune.genes.eval.txt"
 VALIDATION_LABEL="$DATA_DIR/immune.genes.test.txt"
+
 LOSS_FN="mean_squared_error"
 ACT_FN="relu"
 CLASS_SIZE=2
-MODEL2_FILE_NAME="genes.hdf5"
-
-PREV_MODEL="$JOB_DIR_MODEL_1/$MODEL1_FILE_NAME"
 
 python -m trainer.task --train-files $TRAIN_FILE $TRAIN_LABEL \
                        --validation-files $VALIDATION_FILE $VALIDATION_LABEL \

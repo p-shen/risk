@@ -62,7 +62,7 @@ class ContinuousEval(Callback):
                 kmodel = model.load_savedmodel(checkpoints[-1], custom_objects={
                     'negative_log_partial_likelihood': model.negative_log_partial_likelihood})
                 kmodel = model.compile_model(
-                    kmodel, self.learning_rate, self.loss_fn)
+                    kmodel, self.learning_rate, self.loss_fn, print_summary=False)
                 loss, acc = kmodel.evaluate_generator(
                     self.eval_generator,
                     steps=self.eval_steps)

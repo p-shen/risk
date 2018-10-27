@@ -73,20 +73,13 @@ def model_fn(input_dim,
     # model.add(layers.Dropout(0.5))
 
     model = models.Sequential()
-    model.add(layers.Dense(1024, input_dim=input_dim,
+    model.add(layers.Dense(512, input_dim=input_dim,
                            kernel_regularizer=regularizers.l2(0.01),
                            activity_regularizer=regularizers.l2(0.01)))
     model.add(layers.BatchNormalization())
 
-    model.add(layers.Dense(512, activation="relu"))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dense(512, activation="relu"))
-    model.add(layers.BatchNormalization())
     model.add(layers.Dense(256, activation="relu"))
     model.add(layers.BatchNormalization())
-    model.add(layers.Dropout(0.5))
-
-    model.add(layers.Dense(256, activation="relu"))
     model.add(layers.Dense(256, activation="relu"))
     model.add(layers.Dense(128, activation="relu"))
     model.add(layers.Dropout(0.5))
@@ -130,14 +123,16 @@ def model_fn_xfer(model,
     return model
 
 
-def compile_model(model, learning_rate, loss_fn):
+def compile_model(model, learning_rate, loss_fn, print_summary=True):
     print("Compiling model with loss fn {}".format(loss_fn))
     model.compile(loss=loss_fn,
                   optimizer=keras.optimizers.Adam(
                       lr=learning_rate, clipvalue=0.5, clipnorm=1.0),
                   metrics=['accuracy'])
 
-    print(model.summary())
+    if print_summary:
+        print(model.summary())
+
     return model
 
 

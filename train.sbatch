@@ -24,7 +24,7 @@ MODEL1_FILE_NAME="surv.hdf5"
 
 TRAIN_STEPS=80
 BATCH_SIZE=128
-LEARNING_RATE=0.003
+LEARNING_RATE=0.05
 
 TRAIN_FILE="$DATA_DIR/TrainingData.txt"
 EVAL_FILE="$DATA_DIR/EvalData.txt"
@@ -49,8 +49,8 @@ python -m trainer.task --train-files $TRAIN_FILE $TRAIN_LABEL \
                        --model-file-name $MODEL1_FILE_NAME \
                        --train-steps $TRAIN_STEPS \
                        --learning-rate $LEARNING_RATE \
-                       --num-epochs 500 \
-                       --early-stop 100 \
+                       --num-epochs 400 \
+                       --early-stop 10 \
                        --train-batch-size $BATCH_SIZE \
                        --eval-frequency 10 \
                        --checkpoint-epochs 5
@@ -64,7 +64,7 @@ PREV_MODEL="$JOB_DIR_MODEL_1/$MODEL1_FILE_NAME"
 
 TRAIN_STEPS=80
 BATCH_SIZE=128
-LEARNING_RATE=0.003
+LEARNING_RATE=0.0005
 
 TRAIN_FILE="$DATA_DIR/TrainingData.txt"
 EVAL_FILE="$DATA_DIR/EvalData.txt"
@@ -90,8 +90,8 @@ python -m trainer.task --train-files $TRAIN_FILE $TRAIN_LABEL \
                        --model-file-name $MODEL2_FILE_NAME \
                        --train-steps $TRAIN_STEPS \
                        --learning-rate $LEARNING_RATE \
-                       --num-epochs 250 \
-                       --early-stop 100 \
+                       --num-epochs 100 \
+                       --early-stop 10 \
                        --train-batch-size $BATCH_SIZE \
                        --eval-frequency 10 \
                        --checkpoint-epochs 5

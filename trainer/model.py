@@ -73,19 +73,14 @@ def model_fn(input_dim,
     # model.add(layers.Dropout(0.5))
 
     model = models.Sequential()
-    model.add(layers.Dense(512, input_dim=input_dim,
+    model.add(layers.Dense(128, input_dim=input_dim,
                            kernel_regularizer=regularizers.l2(0.01),
                            activity_regularizer=regularizers.l2(0.01)))
     model.add(layers.BatchNormalization())
 
-    model.add(layers.Dense(256, activation="relu"))
+    model.add(layers.Dense(128, activation="relu"))
     model.add(layers.BatchNormalization())
-    model.add(layers.Dense(256, activation="relu"))
-    model.add(layers.Dense(128, activation="relu"))
-    model.add(layers.Dropout(0.5))
-
-    model.add(layers.Dense(128, activation="relu"))
-    model.add(layers.Dense(128, activation="relu"))
+    model.add(layers.Dense(64, activation="relu"))
     model.add(layers.Dense(64, activation="relu"))
     model.add(layers.Dropout(0.5))
 

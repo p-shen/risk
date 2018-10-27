@@ -10,7 +10,7 @@ JOB_DIR_MODEL_1="$JOB_DIR/surv"
 
 TRAIN_STEPS=10
 BATCH_SIZE=128
-LEARNING_RATE=0.003
+LEARNING_RATE=0.05
 
 TRAIN_FILE="$DATA_DIR/TrainingData.txt"
 EVAL_FILE="$DATA_DIR/EvalData.txt"
@@ -43,11 +43,11 @@ python -m trainer.task --train-files $TRAIN_FILE $TRAIN_LABEL \
 
 
 # Training on immune gene expression
-JOB_DIR_MODEL_1 = "$JOB_DIR/immune"
+JOB_DIR_MODEL_2="$JOB_DIR/immune"
 
 TRAIN_STEPS=10
 BATCH_SIZE=128
-LEARNING_RATE=0.003
+LEARNING_RATE=0.0005
 
 TRAIN_FILE="$DATA_DIR/TrainingData.txt"
 EVAL_FILE="$DATA_DIR/EvalData.txt"
@@ -70,7 +70,7 @@ python -m trainer.task --train-files $TRAIN_FILE $TRAIN_LABEL \
                        --loss-fn $LOSS_FN \
                        --activation-fn $ACT_FN \
                        --class-size $CLASS_SIZE \
-                       --job-dir $JOB_DIR \
+                       --job-dir $JOB_DIR_MODEL_2 \
                        --model-file-name $MODEL2_FILE_NAME \
                        --train-steps $TRAIN_STEPS \
                        --learning-rate $LEARNING_RATE \

@@ -85,6 +85,7 @@ def model_fn(input_dim,
     model.add(layers.Dropout(0.5))
 
     model.add(layers.Dense(32, activation="relu"))
+    model.add(layers.Dense(32, activation="relu"))
     model.add(layers.Dense(labels_dim, activation=activation_fn))
 
     compile_model(model, learning_rate, loss_fn)

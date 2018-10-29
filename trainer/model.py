@@ -82,7 +82,7 @@ def model_fn(input_dim,
     model.add(layers.BatchNormalization())
     model.add(layers.Dense(64, activation="relu"))
     model.add(layers.Dense(64, activation="relu"))
-    model.add(layers.Dropout(0.5))
+    # model.add(layers.Dropout(0.5))
 
     model.add(layers.Dense(32, activation="relu"))
     model.add(layers.Dense(32, activation="relu"))

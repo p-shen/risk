@@ -63,23 +63,23 @@ You can run the Keras code locally.
 A sample local run can be run as:
 
 ```{bash}
-JOB_DIR=models/batch_by_type
-TRAIN_STEPS=3
-BATCH_SIZE=128
-TRAIN_FILE=/Users/Peter/Documents/GitHub/risk/data/tcga/TrainingData.txt
-EVAL_FILE=/Users/Peter/Documents/GitHub/risk/data/tcga/EvalData.txt
-VALIDATION_FILE=/Users/Peter/Documents/GitHub/risk/data/tcga/TestData.txt
-LEARNING_RATE=0.003
+TRAIN_STEPS=35
+BATCH_SIZE=256
+TRAIN_FILE="$DATA_DIR/TrainingData.txt"
+EVAL_FILE="$DATA_DIR/EvalData.txt"
+VALIDATION_FILE="$DATA_DIR/TestData.txt"
+LEARNING_RATE=0.0003
 python -m trainer.task --train-files $TRAIN_FILE \
                        --eval-files $EVAL_FILE \
                        --validation-files $VALIDATION_FILE \
                        --job-dir $JOB_DIR \
                        --train-steps $TRAIN_STEPS \
                        --learning-rate $LEARNING_RATE \
-                       --num-epochs 300 \
-                       --early-stop 100 \
-                      --train-batch-size $BATCH_SIZE
+                       --num-epochs 100 \
+                       --early-stop 10 \
+                       --train-batch-size $BATCH_SIZE
 ```
+
 
 ## Training using gcloud local
 

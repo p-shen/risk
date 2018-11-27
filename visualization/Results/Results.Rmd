@@ -1,0 +1,40 @@
+---
+title: "Results"
+author: "Peter Shen"
+date: '2018-10-28'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(reshape2)
+```
+
+```{r}
+cnames <- c("Epoch", "Training", "Evaluation")
+ci.before <- read.table("surv/concordance_before_norm.tsv", sep="\t")
+colnames(ci.before) <- cnames
+ci.before$Normalization <- "Pre-Normalization"
+ci.after <- read.table("surv/concordance_after_norm.tsv", sep="\t")
+colnames(ci.after) <- cnames
+ci.after$Normalization <- "Post-Normalization"
+ci <- rbind(ci.before, ci.after)
+
+ci <- melt(ci, id=c("Epoch","Normalization"))
+ci$Preprocessing <- apply(ci, 1, function(x) paste(x['Normalization'], x['variable'], collapse = ","))
+
+ci$Preprocessing <- as.factor(ci$Preprocessing)
+ci$Preprocessing <- factor(ci$Preprocessing, levels(ci$Preprocessing)[c(4,2,1,3)])
+```
+
+
+```{r}
+ggplot(ci) + 
+  # geom_line(mapping=aes(Epoch, trci, color=trt)) +
+  stat_smooth(aes(x = Epoch, y = value, color=Preprocessing), method = "lm",
+              formula = y ~ poly(x, 8), se = FALSE) +
+  ylab("c-Index") + theme_classic()
+```
+
+
